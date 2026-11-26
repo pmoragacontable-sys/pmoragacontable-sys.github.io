@@ -97,7 +97,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 26-11-2026 · 12:00</p>
+  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 26-11-2026 · 18:00</p>
   <p class="sub">Del Registro de Compras y Ventas al libro diario, mayor y balance de comprobación.</p>
   <div id="avisoApp"></div>
   <div class="emp" id="empLine"></div>
@@ -1262,7 +1262,7 @@ function renderLC(e){for(const k in lcMemo)delete lcMemo[k];const y=e.per,mes=S.
   const dat=[['Nombre / razón social',e.raz||'—'],['RUT',e.rut],['Dirección',e.dir||'—'],['Representante legal',(e.rep||'—')+(e.repRut?' · RUT '+e.repRut:'')],['Período',per],['Régimen',reg]];
   const ops=opsCaja(y),ini=saldoIniCaja(y)+ops.filter(r=>mes&&r.f.slice(5,7)<mes).reduce((a,r)=>a+r.tot,0),rows=ops.filter(r=>inMes(r.f));
   if(lcV==='a3'||lcV==='a31')dat.push(['Saldo inicial',`$${fmt(ini)}`]);$('lcDat').innerHTML=dat.map(([a,b])=>`<div><dt>${a}</dt><dd>${esc(b)}</dd></div>`).join('');
-  const nb=(S.banco||[]).filter(b=>b.fecha.slice(0,4)===y&&!b.m&&!b.c).length,modoTxt=lcModo(y)==='conc'?'Los documentos se registran cuando están conciliados con el banco (fecha de pago).':'Los documentos se consideran percibidos o pagados en su fecha.';
+  const nb=(S.banco||[]).filter(b=>b.fecha.slice(0,4)===y&&!b.m&&!b.c&&!b.liq&&!b.ok).length,modoTxt=lcModo(y)==='conc'?'Los documentos se registran cuando están conciliados con el banco (fecha de pago).':'Los documentos se consideran percibidos o pagados en su fecha.';
   const kp=(a)=>a.map(([l,v,bad])=>`<div class="kpi ${bad?'bad':''}"><span>${l}</span><strong>${fmt(v)}</strong></div>`).join('');
   const TI=rows.filter(r=>r.t===1).reduce((a,r)=>a+r.tot,0),TE=rows.filter(r=>r.t===2).reduce((a,r)=>a+r.tot,0),BI=rows.filter(r=>r.t===1).reduce((a,r)=>a+r.base,0),BE=rows.filter(r=>r.t===2).reduce((a,r)=>a+r.base,0);
   const nc=v=>`class="n${v<0?' neg':''}"`;
@@ -1998,7 +1998,7 @@ function renderAU(e){const y=e.per,TIT={chk:['INFORME DE REVISIÓN DE AUDITORÍA
     const tiene=c=>S.plan.some(p=>p.c===c),noPlan=[...new Set(L.map(l=>l.c).filter(c=>c&&!tiene(c)))];add('Libros','Todas las cuentas usadas existen en el plan de cuentas',!noPlan.length,noPlan.length?'Faltan: '+noPlan.join(', '):'Sin observaciones');
     const dup=k=>{const m={};S[k].filter(d=>d.fecha.slice(0,4)===y).forEach(d=>{const x=d.tipo+'|'+d.rut+'|'+d.folio;m[x]=(m[x]||0)+1});return Object.entries(m).filter(([,n])=>n>1).map(([x])=>x)};const dv=dup('ventas'),dc=dup('compras');add('Documentos','Sin documentos duplicados en compras y ventas',!dv.length&&!dc.length,(dv.length+dc.length)?`${dv.length+dc.length} duplicados: ${[...dv,...dc].slice(0,5).join('; ')}`:'Sin observaciones');
     const malR=[...new Set([...S.ventas,...S.compras].filter(d=>d.fecha.slice(0,4)===y&&d.rut&&!dvRut(d.rut)).map(d=>d.rut+' '+d.raz))];add('Documentos','RUT de clientes y proveedores con dígito verificador válido',!malR.length,malR.length?`${malR.length} RUT inválidos: ${malR.slice(0,4).join('; ')}`:'Sin observaciones');
-    const pb=(S.banco||[]).filter(b=>b.fecha.slice(0,4)===y&&!b.m&&!b.c).length;add('Bancos','Movimientos bancarios contabilizados',!pb,pb?`${pb} movimientos sin contabilizar`:((S.banco||[]).some(b=>b.fecha.slice(0,4)===y)?'Sin observaciones':'No hay cartolas cargadas para el año'));
+    const pb=(S.banco||[]).filter(b=>b.fecha.slice(0,4)===y&&!b.m&&!b.c&&!b.liq&&!b.ok).length;add('Bancos','Movimientos bancarios contabilizados',!pb,pb?`${pb} movimientos sin contabilizar`:((S.banco||[]).some(b=>b.fecha.slice(0,4)===y)?'Sin observaciones':'No hay cartolas cargadas para el año'));
     const sal=saldos(asientos(+y,false)),contra=Object.keys(sal).filter(c=>{const v=sal[c];if(esRes(c)||Math.abs(v)<1)return false;const cl=claseBal(c);if(/deprec|dep\.? ?acum|amort|provisi/i.test(nom(c)+' '+nomG(lv(c,3))))return false;return (cl==='ac'||cl==='anc')?v<-1:(cl==='pc'||cl==='pnc')?v>1:false});add('Saldos','Cuentas sin saldo contrario a su naturaleza',!contra.length,contra.length?contra.slice(0,6).map(c=>`${c} ${nom(c)}: ${fmt(sal[c])}`).join('; '):'Sin observaciones');
     for(const k in f29Memo)delete f29Memo[k];const C=cadenaF29(),ms=Object.keys(C).filter(m=>m.slice(0,4)===y),remM=ms.filter(m=>C[m][77]>0).length;add('IVA','Remanente de crédito fiscal no acumulado por más de 6 meses',remM<=6,`${remM} meses con remanente en el año`);
     const afN=S.compras.filter(d=>d.fecha.slice(0,4)===y&&d.netoAF>0&&!S.af.some(a=>a.compra===dkey('compras',d))).length;add('Activo fijo','Compras de activo fijo registradas en el control de activo fijo',!afN,afN?`${afN} compras sin registrar`:'Sin observaciones');
