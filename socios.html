@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Portal de socios · gastos pagados</title>
+<style>
+:root{--bg:#f6f5f1;--pan:#fff;--ink:#1d2421;--mut:#5f6b66;--lin:#dcdcd4;--acc:#b8361e;--ok:#2f7d4f;--chip:#efeee8}
+@media (prefers-color-scheme:dark){:root{--bg:#161a18;--pan:#1f2422;--ink:#ecefe9;--mut:#a3ada7;--lin:#36403b;--acc:#e0603f;--ok:#5fbf86;--chip:#2a312e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:18px 16px 40px}h1{font-size:23px;margin:0}h2{font-size:17px;margin:0 0 10px}.sub{color:var(--mut);margin:2px 0 14px}
+.panel{background:var(--pan);border:1px solid var(--lin);border-radius:14px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut);font-weight:600}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--lin);border-radius:8px;padding:9px 10px;min-height:40px}
+.btn{border:1px solid var(--ink);background:transparent;color:var(--ink);padding:9px 14px;border-radius:9px;cursor:pointer;font-weight:600;min-height:40px}.btn.acc{background:var(--acc);border-color:var(--acc);color:#fff}.btn.sm{padding:3px 9px;min-height:0;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.note{color:var(--mut);font-size:13px}.msg{min-height:1.2em;margin:8px 0 0}.err{color:var(--acc)}.ok{color:var(--ok)}.hide{display:none!important}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.kpi{background:var(--chip);border-radius:12px;padding:12px}.kpi span{display:block;color:var(--mut);font-size:12px;font-weight:600}.kpi strong{font-size:20px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 8px;border-bottom:1px solid var(--lin);text-align:left;vertical-align:top}th{color:var(--mut);font-size:12px}td.n,th.n{text-align:right;white-space:nowrap}
+</style>
+</head>
+<body>
+<main>
+  <h1>Portal de socios</h1><p class="sub" id="emp">Gastos pagados con dinero propio</p>
+  <div id="vLogin" class="panel">
+    <h2>Ingreso</h2><p class="note" id="lgMsg">Entra con tu correo y clave. Si es tu primera vez, escribe tu correo, inventa una clave de al menos 8 caracteres y aprieta «Crear cuenta».</p>
+    <div class="grid"><label>Correo<input id="lgMail" type="email" autocomplete="username"></label><label>Clave<input id="lgPass" type="password" autocomplete="current-password"></label></div>
+    <div class="row" style="margin-top:12px"><button class="btn acc" id="lgIn" type="button">Entrar</button><button class="btn" id="lgUp" type="button">Crear cuenta</button></div>
+  </div>
+  <div id="vApp" class="hide">
+    <div class="panel"><h2>Mis datos</h2><div class="grid"><label>Nombre completo<input id="sNom"></label><label>RUT<input id="sRut" placeholder="12.345.678-9"></label></div><div class="row" style="margin-top:10px"><span class="note" id="sMail"></span><button class="btn sm" id="bSalir" type="button" style="margin-left:auto">🔒 Cerrar sesión</button></div></div>
+    <div class="panel"><h2>Registrar un gasto que pagué yo</h2>
+      <div class="grid">
+        <label>Fecha del gasto<input type="date" id="gFec"></label>
+        <label>Documento<select id="gTipo"><option>Boleta</option><option>Factura</option><option>Comprobante de transferencia</option><option>Comprobante / ticket</option><option>Sin documento</option></select></label>
+        <label id="gFolL">N° del documento<input id="gFol"></label>
+        <label>Proveedor (tienda o persona)<input id="gProv"></label>
+        <label>RUT del proveedor<input id="gProvR" placeholder="si aparece en el documento"></label>
+        <label>¿En qué se usó?<input id="gDet" placeholder="Ej: municiones para práctica"></label>
+        <label>Monto total pagado<input id="gTot" inputmode="numeric"></label>
+        <label>¿Cómo prefieres que quede?<select id="gTr"><option value="">Que lo decida la contadora</option><option value="reembolso">Que me lo devuelvan</option><option value="aporte">Como aporte a mi capital</option><option value="donacion">Como donación (no lo recupero)</option></select></label>
+        <label>¿La factura salió a nombre de la empresa?<select id="gRcv"><option value="0">No / no sé</option><option value="1">Sí, a nombre de la empresa</option></select></label>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn acc" id="bGuardar" type="button">Guardar gasto</button></div><p class="msg" id="gMsg"></p>
+    </div>
+    <div class="panel"><h2>Mis gastos</h2><div class="kpis" id="kpis"></div><div style="overflow-x:auto;margin-top:10px"><table id="tab"></table></div>
+      <p class="note">Cada gasto queda «pendiente» hasta que la contadora lo revise. Solo puedes borrar los pendientes.</p></div>
+  </div>
+</main>
+<script>
+(()=>{'use strict';
+const SUPA={url:'https://rtvedgrgqoamrmvqwayh.supabase.co',key:'sb_publishable_ArR2hcpJtuLqBZFt2wfqTQ_-TwvnM8b'};
+const $=id=>document.getElementById(id),fmt=n=>Math.round(+n||0).toLocaleString('es-CL'),num=v=>+String(v??'').replace(/[^\d]/g,'')||0,esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hoy=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)},fdm=f=>f?String(f).slice(0,10).split('-').reverse().join('-'):'';
+const P=new URLSearchParams(location.search),EMP=(P.get('e')||'').toUpperCase(),OWN=P.get('o')||'',NOM=P.get('n')||'';
+const TR={reembolso:'Por cobrar (reembolso)',aporte:'Aporte de capital',donacion:'Donación','':'Por definir'};
+function tr(m){m=String(m||'');let x;if(x=m.match(/after (\d+) seconds?/i))return`Por seguridad, espera ${x[1]} segundos antes de intentarlo de nuevo.`;const T=[[/invalid login credentials/i,'Correo o clave incorrectos.'],[/email not confirmed/i,'Primero confirma tu correo con el enlace que te llegó (revisa también Spam) y vuelve a esta página.'],[/already (registered|been registered)|user already exists/i,'Ese correo ya tiene cuenta: usa «Entrar».'],[/password should be at least/i,'La clave es muy corta.'],[/failed to fetch|network/i,'Sin conexión a internet.']];for(const[r,t]of T)if(r.test(m))return t;return'Ocurrió un problema: '+m}
+let SB,U,G=[];
+if(!EMP||!OWN){document.querySelector('main').innerHTML='<div class="panel"><h2>Enlace incompleto</h2><p>Este enlace no indica la empresa. Pide a la contadora el enlace del portal de socios.</p></div>';return}
+$('emp').textContent=(NOM?NOM+' · ':'')+'Gastos pagados con dinero propio';
+const lmsg=(t,b)=>{$('lgMsg').textContent=t;$('lgMsg').className='note'+(b?' err':'')};
+function perfil(){try{return JSON.parse(localStorage.getItem('portalSocio_'+U.id)||'{}')}catch(_){return{}}}
+function guardaPerfil(){try{localStorage.setItem('portalSocio_'+U.id,JSON.stringify({nom:$('sNom').value.trim(),rut:$('sRut').value.trim()}))}catch(_){}}
+async function entrar(u){U=u;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('sMail').textContent='Sesión: '+u.email;const p=perfil();$('sNom').value=p.nom||(u.user_metadata&&u.user_metadata.nombre)||'';$('sRut').value=p.rut||'';$('gFec').value=hoy();await cargar()}
+async function cargar(){const{data,error}=await SB.from('gastos_socios').select('*').eq('socio_uid',U.id).eq('empresa',EMP).order('fecha',{ascending:false});if(error){$('gMsg').className='msg err';$('gMsg').textContent='No se pudieron leer tus gastos: '+error.message;return}G=data||[];pintar()}
+function pintar(){const s=e=>G.filter(g=>!e||g.estado===e).reduce((a,g)=>a+(+g.total||0),0);
+  $('kpis').innerHTML=[['Total registrado',s()],['Pendiente de revisión',s('pendiente')],['Aprobado',s('aprobado')],['Rechazado',s('rechazado')]].map(([l,v])=>`<div class="kpi"><span>${l}</span><strong>$${fmt(v)}</strong></div>`).join('');
+  $('tab').innerHTML='<tr><th>Fecha</th><th>Documento</th><th>Detalle</th><th class="n">Monto</th><th>Queda como</th><th>Estado</th><th></th></tr>'+(G.map(g=>`<tr><td>${fdm(g.fecha)}</td><td>${esc(g.tipo_doc)} ${esc(g.folio||'')}<br><span class="note">${esc(g.proveedor||'')}</span></td><td>${esc(g.detalle||'')}</td><td class="n">$${fmt(g.total)}</td><td>${TR[g.tratamiento||'']}</td><td>${esc(g.estado)}</td><td>${g.estado==='pendiente'?`<button class="btn sm" data-del="${g.id}" type="button">Borrar</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="note">Aún no registras gastos.</td></tr>')}
+(async()=>{try{await new Promise((ok,ko)=>{const t=document.createElement('script');t.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';t.onload=ok;t.onerror=ko;document.head.appendChild(t)});SB=window.supabase.createClient(SUPA.url,SUPA.key);
+  const{data}=await SB.auth.getSession();if(data&&data.session)entrar(data.session.user)}catch(e){lmsg('No se pudo conectar. Revisa tu internet y recarga la página.',true)}})();
+$('lgIn').onclick=async()=>{const m=$('lgMail').value.trim(),p=$('lgPass').value;if(!m||!p)return lmsg('Escribe tu correo y tu clave.',true);lmsg('Entrando…');const{data,error}=await SB.auth.signInWithPassword({email:m,password:p});if(error)return lmsg(tr(error.message),true);entrar(data.user)};
+$('lgUp').onclick=async()=>{const m=$('lgMail').value.trim(),p=$('lgPass').value;if(!m||p.length<8)return lmsg('Escribe tu correo y una clave de al menos 8 caracteres.',true);const{data,error}=await SB.auth.signUp({email:m,password:p});if(error)return lmsg('No se pudo crear la cuenta. '+tr(error.message),true);if(data&&data.session)return entrar(data.user);lmsg('Cuenta creada. Revisa tu correo y aprieta el enlace de confirmación; después vuelve a ESTE enlace y aprieta «Entrar».')};
+$('bSalir').onclick=async()=>{await SB.auth.signOut();location.reload()};
+['sNom','sRut'].forEach(i=>$(i).addEventListener('change',guardaPerfil));
+$('gTipo').addEventListener('change',()=>{const t=$('gTipo').value;$('gFolL').firstChild.textContent=t==='Comprobante de transferencia'?'N° de operación de la transferencia':'N° del documento';$('gProv').placeholder=t==='Comprobante de transferencia'?'A quién le transferiste':''});
+$('bGuardar').onclick=async()=>{const m=$('gMsg');m.className='msg err';const nom=$('sNom').value.trim(),rut=$('sRut').value.trim(),tot=num($('gTot').value);
+  if(!nom)return m.textContent='Escribe tu nombre completo en «Mis datos».';if(!$('gFec').value)return m.textContent='Escribe la fecha del gasto.';if(!$('gDet').value.trim())return m.textContent='Cuenta en qué se usó el gasto.';if(tot<=0)return m.textContent='Escribe el monto pagado.';
+  guardaPerfil();m.className='msg';m.textContent='Guardando…';
+  const r={owner:OWN,empresa:EMP,empresa_nombre:NOM,socio_nombre:nom,socio_rut:rut,fecha:$('gFec').value,tipo_doc:$('gTipo').value,folio:$('gFol').value.trim(),proveedor:$('gProv').value.trim(),proveedor_rut:$('gProvR').value.trim(),detalle:$('gDet').value.trim(),total:tot,tratamiento:$('gTr').value,en_rcv:$('gRcv').value==='1'};
+  const{error}=await SB.from('gastos_socios').insert(r);if(error){m.className='msg err';m.textContent='No se pudo guardar: '+tr(error.message);return}
+  m.className='msg ok';m.textContent='✔ Gasto guardado. Queda pendiente hasta que la contadora lo revise.';['gFol','gProv','gProvR','gDet','gTot'].forEach(i=>$(i).value='');await cargar()};
+document.addEventListener('click',async e=>{const id=e.target.dataset&&e.target.dataset.del;if(!id)return;if(!confirm('¿Borrar este gasto pendiente?'))return;const{error}=await SB.from('gastos_socios').delete().eq('id',id);if(error)alert('No se pudo borrar: '+error.message);await cargar()});
+})();
+</script>
+</body>
+</html>
