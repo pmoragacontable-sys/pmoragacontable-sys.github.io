@@ -45,8 +45,8 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 <body>
 <header>
   <img id="hLogo" class="hide" alt="Logo del club">
-  <div><h1 id="hNom">Socios y cuotas</h1><p class="sub" id="hSub">Programa de socios, cuotas y recibos para clubes · <span id="ver">Versión 26-11-2026 · 13:50</span></p></div>
-  <div class="row" style="margin-left:auto" id="hBtns"><button class="btn" id="bResp" type="button">💾 Respaldo</button><label class="btn" style="flex-direction:row;color:var(--ink)">📂 Restaurar<input type="file" id="fResp" accept=".json" class="hide"></label></div>
+  <div><h1 id="hNom">Socios y cuotas</h1><p class="sub" id="hSub">Programa de socios, cuotas y recibos para clubes · <span id="ver">Versión 26-11-2026 · 14:30</span></p></div>
+  <div class="row" style="margin-left:auto" id="hBtns"><select id="selClub" title="Cambiar de club" style="max-width:230px"></select><button class="btn" id="bClubNew" type="button">+ Nuevo club</button><button class="btn" id="bResp" type="button">💾 Respaldo</button><label class="btn" style="flex-direction:row;color:var(--ink)">📂 Restaurar<input type="file" id="fResp" accept=".json" class="hide"></label></div>
 </header>
 <nav id="tabs">
   <button data-t="ini" class="on">Inicio</button><button data-t="club">Datos del club</button><button data-t="soc">Socios</button><button data-t="pag">Pagos y recibos</button><button data-t="cxc">Por cobrar</button><button data-t="asi">Asistencia</button><button data-t="arm">Armas</button><button data-t="rep">Reporte</button><button data-t="inf">Informe mensual (AF)</button>
@@ -57,10 +57,12 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   <div class="panel"><h2 id="iniTit">Resumen</h2><div class="kpis" id="iniKpi"></div></div>
   <div class="panel">
     <h2>Cargar desde el Excel del club</h2>
-    <p class="note">Sube la planilla «Control de socios y cuotas» (hojas Parametros, Socios y Pagos). Si trae la hoja «Lista de socios», también toma direcciones y teléfonos. Reemplaza los datos actuales de este club.</p>
+    <p class="note">Sirve con dos planillas: <b>«Contabilidad del club»</b> (hojas Parametros, Socios y Registro), que <b>actualiza</b> los socios y los pagos del año sin borrar direcciones, armas ni asistencia; o <b>«Control de socios y cuotas»</b> (hojas Parametros, Socios y Pagos), que <b>reemplaza</b> los datos del club.</p>
     <label class="btn" style="display:inline-flex;flex-direction:row;color:var(--ink)">Elegir Excel<input type="file" id="fXls" accept=".xlsx,.xls" class="hide"></label>
     <p class="msg" id="msgXls"></p>
   </div>
+  <div class="panel"><h2>Clubes</h2><p class="note">Puedes llevar varios clubes en esta misma cuenta: cámbialos con el selector de arriba o crea uno nuevo con «+ Nuevo club». Para presentar el sistema, crea un club de ejemplo con datos inventados.</p>
+    <div class="row"><button class="btn" id="bDemo" type="button">🎓 Crear club de demostración</button></div></div>
 </section>
 <!-- CLUB -->
 <section data-v="club" class="hide">
@@ -73,6 +75,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
     <div class="scroll"><table><thead><tr><th>Cuota</th><th>Vence</th><th class="n">Monto</th><th></th></tr></thead><tbody id="tCuo"></tbody></table></div>
     <div class="row" style="margin-top:8px"><button class="btn" id="bCuoAdd" type="button">+ Agregar cuota</button><span class="note" id="cuoSum"></span></div>
   </div>
+  <div class="panel"><h2>Eliminar este club</h2><p class="note">Borra todos los datos de este club (socios, pagos, armas, asistencia). Descarga antes un 💾 Respaldo.</p><button class="btn" id="bClubDel" type="button">🗑️ Eliminar este club</button></div>
 </section>
 <!-- SOCIOS -->
 <section data-v="soc" class="hide">
@@ -207,10 +210,14 @@ async function iniciarSupa(){if(!window.supabase)await cargarLib('https://cdn.js
     ov.addEventListener('click',async e=>{const id=e.target.id,m=ov.querySelector('#lgMail').value.trim(),p=ov.querySelector('#lgPass').value;
       if(id==='lgIn'){if(!m||!p)return msg('Escribe el correo y la clave.',true);msg('Entrando…');const{data,error}=await SB.auth.signInWithPassword({email:m,password:p});if(error)return msg(trSupa(error.message),true);listo(data.user)}
       if(id==='lgUp'){if(!m||p.length<8)return msg('Escribe un correo y una clave de al menos 8 caracteres.',true);const{error}=await SB.auth.signUp({email:m,password:p});if(error)return msg('No se pudo crear la cuenta. '+trSupa(error.message),true);msg('Cuenta creada. Avisa a quien te entregó el programa para que la active y luego aprieta Entrar.')}})})}
-async function cargar(){if(SB){const{data,error}=await SB.from('docs').select('data').eq('owner',UID).eq('col','club').eq('id','datos').maybeSingle();if(error)throw error;return data&&data.data}
-  try{const t=localStorage.getItem('clubSocios');return t?JSON.parse(t):null}catch(_){return null}}
+let CID=(()=>{try{return localStorage.getItem('clubActual')||'datos'}catch(_){return'datos'}})();
+const lsKey=id=>id==='datos'?'clubSocios':'clubSocios_'+id;
+async function cargar(id){id=id||CID;if(SB){const{data,error}=await SB.from('docs').select('data').eq('owner',UID).eq('col','club').eq('id',id).maybeSingle();if(error)throw error;return data&&data.data}
+  try{const t=localStorage.getItem(lsKey(id));return t?JSON.parse(t):null}catch(_){return null}}
+async function listaClubes(){if(SB){const{data,error}=await SB.from('docs').select('id,nombre:data->club->>nombre').eq('owner',UID).eq('col','club');if(error)throw error;return data||[]}
+  const L=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k==='clubSocios'||k.startsWith('clubSocios_')){let n='';try{n=JSON.parse(localStorage.getItem(k)).club.nombre}catch(_){}L.push({id:k==='clubSocios'?'datos':k.slice(11),nombre:n})}}return L}
 function guardar(){clearTimeout(tGuardar);tGuardar=setTimeout(guardarYa,600)}
-async function guardarYa(){try{if(SB){const{error}=await SB.from('docs').upsert({owner:UID,col:'club',id:'datos',data:S,updated_at:new Date().toISOString()});if(error)throw error}else localStorage.setItem('clubSocios',JSON.stringify(S));estado('')}catch(e){estado('⚠️ No se pudo guardar: '+(e.message||e))}}
+async function guardarYa(){try{if(SB){const{error}=await SB.from('docs').upsert({owner:UID,col:'club',id:CID,data:S,updated_at:new Date().toISOString()});if(error)throw error}else localStorage.setItem(lsKey(CID),JSON.stringify(S));estado('')}catch(e){estado('⚠️ No se pudo guardar: '+(e.message||e))}}
 function estado(t){let el=$('estGuard');if(!el){el=document.createElement('span');el.id='estGuard';el.className='note';$('hBtns').prepend(el)}el.textContent=t||(SB?'Guardado en la nube':'Guardado en este computador')}
 
 /* ---------- cálculos ---------- */
@@ -232,7 +239,7 @@ function palabras(n){n=Math.round(Math.abs(+n||0));if(!n)return'cero';const U=['
 
 /* ---------- render ---------- */
 let tab='ini';
-function cab(){const C=club();$('hNom').textContent=C.nombre||'Socios y cuotas';const l=$('hLogo');if(C.logo){l.src=C.logo;l.classList.remove('hide')}else l.classList.add('hide');document.title=(C.nombre||'Club')+' · Socios y cuotas';document.querySelectorAll('.anio').forEach(x=>x.textContent=C.anio)}
+function cab(){const C=club();$('hNom').textContent=C.nombre||'Socios y cuotas';{const o=$('selClub').querySelector(`option[value="${CID}"]`);if(o)o.textContent=C.nombre||'(club sin nombre)'}const l=$('hLogo');if(C.logo){l.src=C.logo;l.classList.remove('hide')}else l.classList.add('hide');document.title=(C.nombre||'Club')+' · Socios y cuotas';document.querySelectorAll('.anio').forEach(x=>x.textContent=C.anio)}
 const kp=a=>a.map(([l,v,c])=>`<div class="kpi"><span>${l}</span><strong class="${c||''}">${typeof v==='number'?'$'+fmt(v):v}</strong></div>`).join('');
 function render(){cab();document.querySelectorAll('[data-v]').forEach(s=>s.classList.toggle('hide',s.dataset.v!==tab));document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
   const corte=$('cCorte').value||hoy(),X=cxc(corte),T=k=>X.reduce((a,x)=>a+x[k],0);
@@ -369,10 +376,37 @@ function pInfo(){const s=pSocio(),an=+$('pAn').value||club().anio;if(!s){$('pInf
 function sigRecibo(){const mx=Math.max(0,...S.pagos.map(p=>+String(p.rec).replace(/\D/g,'')||0));return'R-'+String(Math.max(mx+1,S.sigRec||1)).padStart(4,'0')}
 
 /* ---------- importar Excel ---------- */
+
+async function importarVF(Rg,P0,So,fecha,fname){const m=$('msgXls'),C=S.club,val=t=>{const r=P0.find(r=>norm(r[1]).startsWith(norm(t)));return r?r[2]:''};
+  const nom=String(val('Nombre de la entidad')||'').trim(),rut=String(val('RUT')||'').trim();if(nom&&!/completar/i.test(nom)&&!C.nombre)C.nombre=nom;if(rut&&!C.rut)C.rut=rut;
+  const an=+val('Ejercicio')||+C.anio;C.anio=an;const va=num(val('Anualidad estándar'));if(va)C.valor=va;
+  const pi=num(val('Pago inicial')),vc=num(val('Valor de cada cuota')),nc=+val('N° de cuotas')||0,fm=mm=>`${an}-${String(mm).padStart(2,'0')}-${String(new Date(an,mm,0).getDate()).padStart(2,'0')}`;
+  if(pi&&(!C.cuotas||!C.cuotas.length||C.cuotas.reduce((a,c)=>a+(+c.monto||0),0)!==pi+vc*nc)){C.cuotas=[{n:'Pago inicial',vence:fm(1),monto:pi}];for(let k=1;k<=nc;k++)C.cuotas.push({n:`${k}ª cuota`,vence:fm(1+3*k),monto:vc})}
+  const hr=Rg.findIndex(r=>norm(r[2])==='tipo'&&norm(r[3]).startsWith('n')),R=Rg.slice(hr+1).filter(r=>r[2]),car={};R.filter(r=>norm(r[2])==='cargo'&&r[3]!=='').forEach(r=>{car[String(r[3])]={f:fecha(r[1]),m:num(r[9])}});
+  let nuevos=0;if(So){const hs=So.findIndex(r=>norm(r[0]).startsWith('n° socio')||norm(r[0]).startsWith('n socio'));for(let k=hs+1;k<So.length;k++){const r=So[k];if(r[0]===''||r[1]==='')continue;const n=String(r[0]);let s=socio(n);if(!s){s={num:n,nom:String(r[1]).trim(),rut:'',mail:'',tel:'',estado:'Activo',cred:'',dir:'',comuna:'',ingreso:'',esp:'',obs:''};S.socios.push(s);nuevos++}
+    const an2=num(r[2])||(car[n]||{}).m||0;s.esp=an2&&an2!==C.valor?an2:'';if(car[n]&&car[n].f>`${an}-01-01`&&!s.ingreso)s.ingreso=car[n].f}}
+  const G={};R.filter(r=>norm(r[2])==='ingreso'&&r[3]!=='').forEach(r=>{const k=[r[3],fecha(r[1]),r[6],r[7]].join('|');(G[k]=G[k]||[]).push(r)});
+  const viejos=S.pagos.filter(p=>+p.anio===an);let sig=Math.max(0,...S.pagos.map(p=>+String(p.rec||'').replace(/\D/g,'')||0))+1;S.pagos=S.pagos.filter(p=>+p.anio!==an);
+  Object.values(G).forEach(L=>{const r=L[0],n=String(r[3]),f=fecha(r[1]),mo=L.reduce((a,x)=>a+num(x[9]),0),det=L.map(x=>String(x[5]||'').trim()),pre=det[0].includes('–')?det[0].split('–')[0].trim():'',con=pre&&det.every(d=>d.startsWith(pre))?pre+': '+det.map(d=>d.split('–').slice(1).join('–').trim()).join(', '):det.join(' + '),med=String(r[7]||''),esp=/especie/i.test(med);
+    const o=viejos.find(p=>String(p.num)===n&&p.fecha===f&&+p.monto===mo),y=+((con.match(/20\d\d/)||[])[0])||an;
+    S.pagos.push({id:uid(),rec:o?o.rec:'R-'+String(sig++).padStart(4,'0'),fecha:f,num:n,monto:mo,concepto:con,medio:esp?'En especie':/banco/i.test(med)?'Transferencia':med||'Otro',trx:String(r[6]||''),obs:String(r[15]||''),anio:y,especie:esp?con:''})});
+  S.sigRec=sig;await guardarYa();const X=cxc(hoy()),tv=X.reduce((a,x)=>a+x.v,0),tp=X.reduce((a,x)=>a+x.pg,0);
+  m.className='msg';m.textContent=`Listo: ${S.socios.length} socios (${nuevos} nuevos) y ${S.pagos.filter(p=>+p.anio===an).length} pagos de ${an} cargados de «${fname}». Anualidades $${fmt(tv)} · pagado $${fmt(tp)} · por cobrar $${fmt(tv-tp)}. Se mantuvieron direcciones, armas y asistencia.`;render()}
+function normalizar(d){if(!(d&&d.club))return ini();const x={...ini(),...d,club:{...ini().club,...d.club}};x.asis=x.asis||[];x.armas=x.armas||[];x.glt=x.glt||[];x.mov=x.mov||[];if(!x.prods||!x.prods.length)x.prods=prodIni();x.cab=x.cab||{tipo:'club'};return x}
+async function pintarClubes(){let L=[];try{L=await listaClubes()}catch(_){}if(!L.some(c=>c.id===CID))L.push({id:CID,nombre:S.club.nombre});L.forEach(c=>{if(c.id===CID)c.nombre=S.club.nombre});$('selClub').innerHTML=L.sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'')).map(c=>`<option value="${esc(c.id)}">${esc(c.nombre||'(club sin nombre)')}</option>`).join('');$('selClub').value=CID}
+async function abrirClub(id,nuevo){if(tGuardar){clearTimeout(tGuardar);tGuardar=null;await guardarYa()}CID=id;try{localStorage.setItem('clubActual',id)}catch(_){}S=nuevo||normalizar(await cargar(id));if(nuevo)await guardarYa();tab='ini';render();await pintarClubes()}
+function clubDemo(){const X=ini(),an=new Date().getFullYear(),C=X.club;Object.assign(C,{nombre:'Club de Tiro Demostración',rut:'65.000.000-0',dom:'Camino al Polígono 1000',comuna:'Colina',pres:'Presidente de Ejemplo',presRut:'11.111.111-1',teso:'Tesorera de Ejemplo',fono:'+56 9 0000 0000',mail:'contacto@clubdemo.cl',anio:an,valor:300000,cuotas:[{n:'Pago inicial',vence:an+'-01-31',monto:150000},{n:'1ª cuota',vence:an+'-04-30',monto:50000},{n:'2ª cuota',vence:an+'-07-31',monto:50000},{n:'3ª cuota',vence:an+'-10-31',monto:50000}]});
+  const NOM=['Andrea Rojas Pinto','Bruno Castro Lillo','Camila Fuentes Vera','Diego Muñoz Soto','Elena Paredes Ríos','Felipe Navarro Gil','Gabriela Torres Leiva','Hugo Salazar Mena','Isabel Cortés Ulloa','Jorge Bravo Aedo','Karen Medina Sáez','Luis Contreras Oyarce','Marcela Vidal Toro','Nicolás Araya Peña','Olga Sepúlveda Cid'],COM=['Colina','Lampa','Quilicura','Santiago','Maipú'];
+  NOM.forEach((n,i)=>{X.socios.push({num:String(i+1),nom:n,rut:`${10+i}.${100+i*7}.${200+i*3}-${i%10}`,mail:'',tel:'+56 9 1234 56'+String(10+i),estado:i===14?'Inactivo':'Activo',cred:`${an+(i%3?1:0)}-${String(1+i%12).padStart(2,'0')}-15`,dir:`Calle Ejemplo ${100+i*10}`,comuna:COM[i%5],ingreso:'',esp:i===13?150000:'',obs:''})});
+  let r=1;const pg=(n,f,m,c,med)=>X.pagos.push({id:uid(),rec:'R-'+String(r++).padStart(4,'0'),fecha:f,num:String(n),monto:m,concepto:c,medio:med||'Transferencia',trx:'',obs:'',anio:an,especie:''});
+  for(let i=1;i<=13;i++){pg(i,an+'-01-'+String(5+i).padStart(2,'0'),150000,'Anualidad '+an+': pago inicial');if(i<=10)pg(i,an+'-04-'+String(10+i).padStart(2,'0'),50000,'Anualidad '+an+': 1ª cuota',i%4?'Transferencia':'Efectivo');if(i<=7)pg(i,an+'-07-'+String(10+i).padStart(2,'0'),50000,'Anualidad '+an+': 2ª cuota');if(i<=4)pg(i,an+'-10-'+String(10+i).padStart(2,'0'),50000,'Anualidad '+an+': 3ª cuota')}pg(14,an+'-03-02',150000,'Anualidad proporcional '+an);
+  X.armas.push({id:uid(),num:'CLUB',tipo:'Pistola',mar:'Glock',mod:'17',cal:'9 mm',ser:'DEMO001',ins:'100001',uso:'Deporte',ven:'',obs:'Armero del club'},{id:uid(),num:'CLUB',tipo:'Escopeta',mar:'Beretta',mod:'A300',cal:'12',ser:'DEMO002',ins:'100002',uso:'Deporte',ven:'',obs:'Armero del club'},{id:uid(),num:'2',tipo:'Pistola',mar:'CZ',mod:'Shadow 2',cal:'9 mm',ser:'DEMO101',ins:'200101',uso:'Deporte',ven:an+'-12-20'},{id:uid(),num:'5',tipo:'Revólver',mar:'Taurus',mod:'RT85',cal:'.38',ser:'DEMO102',ins:'200102',uso:'Deporte',ven:(an+1)+'-05-10'});
+  for(let i=1;i<=8;i++)X.asis.push({id:uid(),fecha:`${an}-${String(1+i).padStart(2,'0')}-1${i%9}`,num:String(i),act:'Práctica',arma:'',mun:0,prod:''});X.sigRec=r;return X}
 async function importarXls(file){const m=$('msgXls');m.className='msg';m.textContent='Leyendo el Excel…';
   try{if(!window.XLSX)await cargarLib('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
     const wb=XLSX.read(await file.arrayBuffer(),{cellDates:true}),hoja=n=>{const k=wb.SheetNames.find(x=>norm(x).trim()===norm(n));return k?XLSX.utils.sheet_to_json(wb.Sheets[k],{header:1,raw:true,defval:''}):null};
     const fecha=v=>v instanceof Date?new Date(v.getTime()-v.getTimezoneOffset()*6e4).toISOString().slice(0,10):(typeof v==='string'&&/^\d{1,2}-\d{1,2}-\d{4}$/.test(v)?v.split('-').reverse().map(x=>x.padStart(2,'0')).join('-'):'');
+    const Rg=hoja('Registro'),P0=hoja('Parametros');if(Rg&&P0&&P0.some(r=>norm(r[1]).startsWith('nombre de la entidad'))){await importarVF(Rg,P0,hoja('Socios'),fecha,file.name);return}
     const N=ini(),P=hoja('Parametros');
     if(P){const val=t=>{const r=P.find(r=>norm(r[0]).startsWith(norm(t)));return r?r[1]:''};const C=N.club;C.nombre=String(val('Nombre del club')||'');C.rut=String(val('RUT del club')||'');C.dom=String(val('Domicilio del club')||'');C.teso=String(val('Tesorero')||'');C.anio=+val('Año de la anualidad')||C.anio;C.valor=num(val('Valor de la anualidad'));
       const i=P.findIndex(r=>norm(r[0])==='concepto'&&norm(r[1])==='vence');if(i>=0)for(let k=i+1;k<P.length&&P[k][0];k++){const mo=num(P[k][2]);if(mo)C.cuotas.push({n:String(P[k][0]).replace(/\s*\(.*\)/,''),vence:fecha(P[k][1]),monto:mo})}
@@ -386,6 +420,12 @@ async function importarXls(file){const m=$('msgXls');m.className='msg';m.textCon
 
 /* ---------- eventos ---------- */
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;tab=b.dataset.t;render()});
+
+$('selClub').addEventListener('change',e=>abrirClub(e.target.value));
+$('bClubNew').addEventListener('click',()=>{const n=(prompt('Nombre del nuevo club:')||'').trim();if(!n)return;const X=ini();X.club.nombre=n;abrirClub('c'+Date.now().toString(36),X)});
+$('bDemo').addEventListener('click',()=>{if(confirm('Se crea un club nuevo con datos inventados para mostrar el sistema. Tus clubes no se tocan. ¿Crear?'))abrirClub('demo'+Date.now().toString(36),clubDemo())});
+$('bClubDel').addEventListener('click',async()=>{const n=club().nombre||'(club sin nombre)',w=prompt(`Para eliminar «${n}» y todos sus datos, escribe ELIMINAR:`);if(w!=='ELIMINAR')return;clearTimeout(tGuardar);tGuardar=null;try{if(SB){const{error}=await SB.from('docs').delete().eq('owner',UID).eq('col','club').eq('id',CID);if(error)throw error}else localStorage.removeItem(lsKey(CID))}catch(e){alert('No se pudo eliminar: '+(e.message||e));return}
+  const L=(await listaClubes().catch(()=>[])).filter(c=>c.id!==CID);if(L.length)await abrirClub(L[0].id);else{CID='datos';try{localStorage.setItem('clubActual','datos')}catch(_){}S=ini();render();await pintarClubes()}});
 $('fXls').addEventListener('change',e=>{const f=e.target.files[0];if(f)importarXls(f);e.target.value=''});
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.club){const k=t.dataset.club;S.club[k]=k==='valor'||k==='anio'?num(t.value):t.value.trim();guardar();render()}
@@ -447,7 +487,7 @@ window.addEventListener('pagehide',()=>{if(tGuardar){clearTimeout(tGuardar);guar
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&tGuardar){clearTimeout(tGuardar);guardarYa()}});
 /* ---------- inicio ---------- */
 (async()=>{try{if(SUPA.url){const u=await iniciarSupa();UID=u.id;const b=document.createElement('button');b.className='btn';b.type='button';b.textContent='🔒 Cerrar sesión';b.title='Sesión de '+u.email;b.onclick=async()=>{await guardarYa();await SB.auth.signOut();location.reload()};$('hBtns').append(b)}
-  const d=await cargar();if(d&&d.club){S={...ini(),...d,club:{...ini().club,...d.club}};S.asis=S.asis||[];S.armas=S.armas||[];S.glt=S.glt||[];S.mov=S.mov||[];if(!S.prods||!S.prods.length)S.prods=prodIni();S.cab=S.cab||{tipo:'club'}}estado('')}catch(e){estado('⚠️ '+(e.message||e))}render()})();
+  let d=await cargar();if(!(d&&d.club)&&CID!=='datos'){CID='datos';d=await cargar()}if(d&&d.club)S=normalizar(d);estado('')}catch(e){estado('⚠️ '+(e.message||e))}render();pintarClubes()})();
 })();
 </script>
 </body>
