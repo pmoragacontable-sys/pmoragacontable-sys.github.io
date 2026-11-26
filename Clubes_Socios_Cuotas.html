@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clubes · Socios y cuotas</title>
+<style>
+:root{--bg:#f6f5f1;--pan:#fff;--ink:#1d2421;--mut:#5f6b66;--lin:#dcdcd4;--acc:#b8361e;--ok:#2f7d4f;--warn:#b7791f;--chip:#efeee8}
+@media (prefers-color-scheme:dark){:root{--bg:#161a18;--pan:#1f2422;--ink:#ecefe9;--mut:#a3ada7;--lin:#36403b;--acc:#e0603f;--ok:#5fbf86;--warn:#e0a03a;--chip:#2a312e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:18px 20px 8px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header img{height:56px;width:auto;border-radius:8px;background:#fff}
+h1{margin:0;font-size:26px}h2{font-size:18px;margin:0 0 10px}.sub{color:var(--mut);margin:2px 0 0;font-size:13px}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:6px 20px 0}
+nav button{border:1px solid var(--lin);background:var(--pan);color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:600}
+nav button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+main{padding:14px 20px 40px;max-width:1300px}
+.panel{background:var(--pan);border:1px solid var(--lin);border-radius:14px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut);font-weight:600}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--lin);border-radius:8px;padding:8px 10px;min-height:38px}
+.btn{border:1px solid var(--ink);background:transparent;color:var(--ink);padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:600;min-height:38px}
+.btn.acc{background:var(--acc);border-color:var(--acc);color:#fff}.btn.sm{padding:3px 9px;min-height:0;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kpi{background:var(--chip);border-radius:12px;padding:12px}.kpi span{display:block;color:var(--mut);font-size:12px;font-weight:600}.kpi strong{font-size:21px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 8px;border-bottom:1px solid var(--lin);text-align:left;vertical-align:top}th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll{overflow-x:auto}.note{color:var(--mut);font-size:13px}.hide{display:none!important}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:var(--chip)}
+.t-ok{color:var(--ok)}.t-warn{color:var(--warn)}.t-bad{color:var(--acc)}
+.msg{min-height:1.2em;margin:8px 0 0}.err{color:var(--acc)}
+#ov{position:fixed;inset:0;z-index:50;background:rgba(10,15,12,.82);display:flex;align-items:center;justify-content:center;padding:16px}
+#ov .panel{max-width:620px;width:100%;max-height:92vh;overflow:auto}
+/* recibo imprimible */
+#print{display:none}
+@media print{body>*:not(#print){display:none!important}#print{display:block;color:#000;background:#fff;font:13px/1.45 Arial,sans-serif}}
+.rc{border:1.5px solid #000;padding:18px 22px;margin:0 auto;max-width:720px;page-break-inside:avoid}
+.rc .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.rc img{max-height:70px}
+.rc table td{border:none;padding:3px 4px}.rc .big{font-size:20px;font-weight:700}.rc .firma{display:flex;justify-content:space-around;margin-top:46px;text-align:center}
+.rep h3{margin:14px 0 6px}.rep table{font-size:12px}.rep th,.rep td{border-bottom:1px solid #999;padding:4px}
+</style>
+</head>
+<body>
+<header>
+  <img id="hLogo" class="hide" alt="Logo del club">
+  <div><h1 id="hNom">Socios y cuotas</h1><p class="sub" id="hSub">Programa de socios, cuotas y recibos para clubes · <span id="ver">Versión 26-11-2026 · 02:10</span></p></div>
+  <div class="row" style="margin-left:auto" id="hBtns"><button class="btn" id="bResp" type="button">💾 Respaldo</button><label class="btn" style="flex-direction:row;color:var(--ink)">📂 Restaurar<input type="file" id="fResp" accept=".json" class="hide"></label></div>
+</header>
+<nav id="tabs">
+  <button data-t="ini" class="on">Inicio</button><button data-t="club">Datos del club</button><button data-t="soc">Socios</button><button data-t="pag">Pagos y recibos</button><button data-t="cxc">Por cobrar</button><button data-t="asi">Asistencia</button><button data-t="arm">Armas</button><button data-t="rep">Reporte</button><button data-t="inf">Informe mensual (AF)</button>
+</nav>
+<main>
+<!-- INICIO -->
+<section data-v="ini">
+  <div class="panel"><h2 id="iniTit">Resumen</h2><div class="kpis" id="iniKpi"></div></div>
+  <div class="panel">
+    <h2>Cargar desde el Excel del club</h2>
+    <p class="note">Sube la planilla «Control de socios y cuotas» (hojas Parametros, Socios y Pagos). Si trae la hoja «Lista de socios», también toma direcciones y teléfonos. Reemplaza los datos actuales de este club.</p>
+    <label class="btn" style="display:inline-flex;flex-direction:row;color:var(--ink)">Elegir Excel<input type="file" id="fXls" accept=".xlsx,.xls" class="hide"></label>
+    <p class="msg" id="msgXls"></p>
+  </div>
+</section>
+<!-- CLUB -->
+<section data-v="club" class="hide">
+  <div class="panel"><h2>Datos del club</h2>
+    <div class="grid" id="clubGrid"></div>
+    <div class="row" style="margin-top:12px"><label class="btn" style="flex-direction:row;color:var(--ink)">🖼️ Subir logo<input type="file" id="fLogo" accept="image/*" class="hide"></label><button class="btn" id="bLogoX" type="button">Quitar logo</button><img id="logoPrev" style="max-height:70px" class="hide" alt="Logo"></div>
+  </div>
+  <div class="panel"><h2>Calendario de cuotas de la anualidad</h2>
+    <p class="note">Cada cuota con su fecha de vencimiento. La suma debe ser igual al valor de la anualidad.</p>
+    <div class="scroll"><table><thead><tr><th>Cuota</th><th>Vence</th><th class="n">Monto</th><th></th></tr></thead><tbody id="tCuo"></tbody></table></div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="bCuoAdd" type="button">+ Agregar cuota</button><span class="note" id="cuoSum"></span></div>
+  </div>
+</section>
+<!-- SOCIOS -->
+<section data-v="soc" class="hide">
+  <div class="panel">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Socios (<span id="nSoc"></span>)</h2><div class="row"><input id="qSoc" placeholder="Buscar por nombre, RUT o N°" style="min-width:240px"><button class="btn acc" id="bSocNew" type="button">+ Nuevo socio</button></div></div>
+    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>N°</th><th>Nombre</th><th>RUT</th><th>Dirección</th><th>Teléfono</th><th>Estado</th><th class="n">Anualidad</th><th></th></tr></thead><tbody id="tSoc"></tbody></table></div>
+  </div>
+</section>
+<!-- PAGOS -->
+<section data-v="pag" class="hide">
+  <div class="panel"><h2>Registrar pago</h2>
+    <div class="grid">
+      <label>Fecha<input type="date" id="pFec"></label>
+      <label>Socio<input id="pSoc" list="dlSoc" placeholder="N° o nombre"></label>
+      <label>Monto<input id="pMon" inputmode="numeric"></label>
+      <label>Concepto<select id="pCon"></select></label>
+      <label>Medio de pago<select id="pMed"><option>Transferencia</option><option>Efectivo</option><option>Depósito</option><option>Tarjeta</option><option>Cheque</option><option>En especie</option><option>Otro</option></select></label>
+      <label>N° de transacción<input id="pTrx"></label>
+      <label id="pEspL" class="hide">Bien entregado (en especie)<input id="pEsp" placeholder="Ej: revólver marca, calibre, N° serie"></label>
+      <label>Año de la anualidad<input id="pAn" inputmode="numeric"></label>
+      <label>Observación<input id="pObs"></label>
+    </div>
+    <datalist id="dlSoc"></datalist>
+    <div class="row" style="margin-top:12px"><button class="btn acc" id="bPag" type="button">Guardar pago y ver recibo</button><span class="note" id="pInfo"></span></div>
+    <p class="msg" id="msgPag"></p>
+  </div>
+  <div class="panel">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Pagos registrados (<span id="nPag"></span>)</h2><div class="row"><input id="qPag" placeholder="Buscar" style="min-width:200px"><select id="fAnPag"></select></div></div>
+    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>Recibo</th><th>Fecha</th><th>Socio</th><th class="n">Monto</th><th>Concepto</th><th>Medio</th><th>Año</th><th></th></tr></thead><tbody id="tPag"></tbody></table></div>
+  </div>
+</section>
+<!-- CXC -->
+<section data-v="cxc" class="hide">
+  <div class="panel"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Cuentas por cobrar · anualidad <span class="anio"></span></h2><label style="flex-direction:row;align-items:center;gap:8px">Fecha de corte<input type="date" id="cCorte"></label></div>
+    <div class="kpis" id="cKpi" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:10px"><select id="cFil"><option value="">Todos los estados</option><option>Pagado</option><option>Al día</option><option>En mora</option><option>Sin pago</option><option>Sin pago (no vencido)</option><option>Inactivo</option></select></div>
+    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>N°</th><th>Socio</th><th class="n">Anualidad</th><th class="n">Pagado</th><th class="n">Saldo</th><th class="n">Exigible</th><th class="n">En mora</th><th>Estado</th><th>Último pago</th></tr></thead><tbody id="tCxc"></tbody></table></div>
+  </div>
+</section>
+<!-- ASISTENCIA -->
+<section data-v="asi" class="hide">
+  <div class="panel"><h2>Registrar asistencia</h2>
+    <div class="grid"><label>Fecha<input type="date" id="aFec"></label><label>Socio<input id="aSoc" list="dlSoc" placeholder="N° o nombre"></label>
+      <label>Actividad<select id="aAct"><option>Práctica</option><option>Competencia</option><option>Curso / instrucción</option><option>Otra</option></select></label>
+      <label>Arma usada<select id="aArma"><option value="">—</option></select></label>
+      <label>Munición entregada por el club (cantidad)<input id="aMun" inputmode="numeric"></label><label>Calibre de la munición<input id="aCal" placeholder="Ej: 9 mm"></label></div>
+    <div class="row" style="margin-top:10px"><button class="btn acc" id="bAsi" type="button">Guardar asistencia</button><span class="msg" id="msgAsi"></span></div></div>
+  <div class="panel"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Asistencias</h2><div class="row"><select id="aAnio"></select><input id="qAsi" placeholder="Buscar socio"></div></div>
+    <div class="kpis" id="aKpi" style="margin-top:10px"></div>
+    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>Socio</th><th class="n">Asistencias</th><th class="n">Munición entregada</th><th>Última</th><th></th></tr></thead><tbody id="tAsiRes"></tbody></table></div>
+    <h2 style="margin-top:14px">Detalle</h2><div class="scroll"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Actividad</th><th>Arma</th><th class="n">Munición</th><th></th></tr></thead><tbody id="tAsi"></tbody></table></div></div>
+</section>
+<!-- ARMAS -->
+<section data-v="arm" class="hide">
+  <div class="panel"><h2>Registrar arma de un socio</h2>
+    <div class="grid"><label>Socio<input id="wSoc" list="dlSoc" placeholder="N° o nombre"></label><label>Tipo<select id="wTipo"><option>Pistola</option><option>Revólver</option><option>Escopeta</option><option>Rifle / carabina</option><option>Otra</option></select></label>
+      <label>Marca<input id="wMar"></label><label>Modelo<input id="wMod"></label><label>Calibre<input id="wCal"></label><label>N° de serie<input id="wSer"></label><label>N° de inscripción<input id="wIns"></label>
+      <label>Uso inscrito<select id="wUso"><option>Deporte</option><option>Caza</option><option>Colección</option><option>Defensa personal</option></select></label><label>Permiso / credencial vigente hasta<input type="date" id="wVen"></label></div>
+    <div class="row" style="margin-top:10px"><button class="btn acc" id="bArm" type="button">Guardar arma</button><span class="msg" id="msgArm"></span></div></div>
+  <div class="panel"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Armas inscritas (<span id="nArm"></span>)</h2><input id="qArm" placeholder="Buscar socio, serie o calibre"></div>
+    <div class="kpis" id="wKpi" style="margin-top:10px"></div>
+    <div class="scroll" style="margin-top:10px"><table><thead><tr><th>Socio</th><th>Tipo</th><th>Marca / modelo</th><th>Calibre</th><th>Serie</th><th>Inscripción</th><th>Uso</th><th>Vence</th><th></th></tr></thead><tbody id="tArm"></tbody></table></div></div>
+</section>
+<!-- INFORME MENSUAL MOVIMIENTO -->
+<section data-v="inf" class="hide">
+  <div class="panel"><h2>Datos del encabezado</h2><p class="note">El mismo formato sirve para el informe del club y para el informe comercial de la armería; solo cambia el encabezado.</p><div class="grid" id="iCab"></div></div>
+  <div class="panel"><h2>Registrar movimiento</h2>
+    <div class="grid"><label>Fecha del documento<input type="date" id="mFec"></label><label>Mes en que se informa<input type="month" id="mMes"></label>
+      <label>Producto<select id="mProd"></select></label><label>Tipo de documento (TD)<select id="mTD"><option>BE</option><option>FE</option><option>GD</option><option>DIN</option><option>OC</option><option>NC</option><option>Otro</option></select></label>
+      <label>Autoridad fiscalizadora<select id="mAF"></select></label><label>RUT o N° de documento<input id="mRut" placeholder="Ej: 12.345.678-9 o DIN B0342995"></label><label>Nombre<input id="mNom"></label>
+      <label>Entradas<input id="mEnt" inputmode="numeric"></label><label>Salidas<input id="mSal" inputmode="numeric"></label></div>
+    <div class="row" style="margin-top:10px"><button class="btn acc" id="bMov" type="button">Guardar movimiento</button><span class="msg" id="msgMov"></span></div></div>
+  <div class="panel"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Informe del mes</h2><div class="row"><input type="month" id="iMes"><button class="btn acc" id="bInf" type="button">🖨️ Imprimir o guardar PDF</button></div></div>
+    <div class="kpis" id="iKpi" style="margin-top:10px"></div><div id="iRev" style="margin-top:8px"></div>
+    <h3 style="margin:14px 0 6px">Movimientos informados en el mes</h3><div class="scroll"><table><thead><tr><th>Fecha doc.</th><th>Producto</th><th>TD</th><th>AF</th><th>RUT / doc.</th><th>Nombre</th><th class="n">Entradas</th><th class="n">Salidas</th><th></th></tr></thead><tbody id="tMov"></tbody></table></div></div>
+  <div class="panel"><h2>Productos y saldos iniciales</h2><p class="note">Saldo inicial = existencia antes del primer movimiento registrado en el programa. Los meses siguientes se arrastran solos.</p>
+    <div class="scroll"><table><thead><tr><th>Hoja del informe</th><th>Producto</th><th class="n">Saldo inicial</th><th>Desde (mes)</th><th class="n">Saldo actual</th><th></th></tr></thead><tbody id="tProd"></tbody></table></div>
+    <div class="row" style="margin-top:8px"><input id="pHoja" placeholder="Hoja (ej: Munición proyectil único)"><input id="pNom" placeholder="Producto (ej: PROYECTIL UNICO CALIBRE 9mm.)"><button class="btn" id="bProd" type="button">+ Agregar producto</button></div></div>
+</section>
+<!-- REPORTE -->
+<section data-v="rep" class="hide">
+  <div class="panel"><h2>Reporte de cuotas</h2><p class="note">Resumen para el directorio o la asamblea. Aprieta «Imprimir o guardar PDF» y en la ventana elige «Guardar como PDF».</p>
+    <div class="row"><button class="btn acc" id="bRep" type="button">🖨️ Imprimir o guardar PDF</button></div>
+    <div id="repPrev" style="margin-top:12px"></div></div>
+</section>
+</main>
+<div id="print"></div>
+
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(+n||0).toLocaleString('es-CL');
+const num=v=>+String(v??'').replace(/[^\d,-]/g,'').replace(',','.')||0;
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hoy=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const fdm=f=>f?f.slice(0,10).split('-').reverse().join('-'):'';
+const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+
+const AF=[{"cod":"001","nom":"IQUIQUE","ubic":"1º Comisaría de Carabineros Iquique","dir":"Calle Libertador Bernardo O'Higgins Nº 427","fono":"572557050","comunas":["Iquique","Alto Hospicio"]},{"cod":"002","nom":"ARICA","ubic":"3º Comisaría de Carabineros Arica","dir":"Av. Loa Nº 1475","fono":"582458100","comunas":["Arica","Putre","General Lagos","Camarones"]},{"cod":"004","nom":"POZO ALMONTE","ubic":"2º Comisaría de Carabineros Pozo Almonte","dir":"Calle Comercio Nº 652","fono":"572557131","comunas":["Pozo Almonte","Huara","Pica","Camiña","Colchane"]},{"cod":"005","nom":"ANTOFAGASTA","ubic":"3º Comisaría de Carabineros Antofagasta","dir":"Calle Baquedano Nº 450, Antofagasta","fono":"552755157","comunas":["Antofagasta","Mejillones"]},{"cod":"006","nom":"TOCOPILLA","ubic":"4º Comisaría de Carabineros Tocopilla","dir":"Calle 21 de Mayo Nº 1666","fono":"552755188","comunas":["Tocopilla","María Elena"]},{"cod":"007","nom":"CALAMA","ubic":"Edificio Fiscal","dir":"Calle Vargas Nº 2089, Sector Central","fono":"552755249","comunas":["Calama","Sierra Gorda","San Pedro de Atacama","Ollagüe"]},{"cod":"009","nom":"TALTAL","ubic":"1º Comisaría de Carabineros Taltal","dir":"Calle Sgto. Aldea Nº 502, esquina Torreblanca","fono":"552755099","comunas":["Taltal"]},{"cod":"010","nom":"COPIAPÓ","ubic":"2º Comisaría de Copiapó","dir":"Calle O'Higgins Nº 751","fono":"522552113","comunas":["Copiapó","Caldera","Tierra Amarilla"]},{"cod":"011","nom":"CHAÑARAL","ubic":"1º Comisaría de Carabineros Chañaral","dir":"Calle Carrera S/N, esquina Maipú, Chañaral","fono":"522552082","comunas":["Chañaral"]},{"cod":"012","nom":"VALLENAR","ubic":"3º Comisaría de Vallenar","dir":"Serrano Nº 1196, esquina Alonso de Ercilla","fono":"512651253","comunas":["Huasco","Freirina","Vallenar","Alto del Carmen"]},{"cod":"014","nom":"EL SALVADOR","ubic":"4º Comisaría El Salvador","dir":"Av. Potrerillos Sur 2504, Campamento Minero El Salvador","fono":"522552145","comunas":["Diego de Almagro"]},{"cod":"015","nom":"LA SERENA","ubic":"Interior Cuartel Pampa","dir":"Av. Balmaceda Nº 4828, Paradero 10 La Pampa","fono":"512719090 / 512651099","comunas":["La Serena","La Higuera"]},{"cod":"016","nom":"COQUIMBO","ubic":"2º Comisaría de Carabineros Coquimbo","dir":"Tegualda 515, El Llano, Coquimbo","fono":"512651125","comunas":["Coquimbo","Andacollo"]},{"cod":"017","nom":"VICUÑA","ubic":"5º Comisaría de Carabineros Vicuña","dir":"Av. Las Delicias Nº 599, Vicuña","fono":"512651170","comunas":["Vicuña","Paihuano"]},{"cod":"018","nom":"OVALLE","ubic":"3º Comisaría de Carabineros Ovalle","dir":"Calle Tangue Nº 20","fono":"532453016","comunas":["Ovalle","Punitaqui","Monte Patria","Río Hurtado"]},{"cod":"019","nom":"COMBARBALÁ","ubic":"Subcomisaría Combarbalá","dir":"Plaza de Armas Nº 100","fono":"532453072","comunas":["Combarbalá"]},{"cod":"020","nom":"ILLAPEL","ubic":"4º Comisaría de Carabineros de Illapel","dir":"Calle O'Higgins Nº 189, frente a la Plaza de Armas","fono":"532453134","comunas":["Illapel","Salamanca","Los Vilos","Canela"]},{"cod":"021","nom":"VALPARAÍSO","ubic":"Edificio Costanera Pacífico, Valparaíso","dir":"Calle Blanco Nº 1733, 3º piso, oficina C-5","fono":"323132134","comunas":["Valparaíso","Casablanca","Juan Fernández"]},{"cod":"022","nom":"LA LIGUA","ubic":"1º Comisaría de Carabineros La Ligua","dir":"Avenida Diego Portales 333","fono":"332433011","comunas":["La Ligua","Papudo","Cabildo","Petorca","Zapallar"]},{"cod":"023","nom":"LOS ANDES","ubic":"3º Comisaría de Carabineros Los Andes","dir":"Av. Santa Teresa 491, Los Andes","fono":"342334095","comunas":["Los Andes","Calle Larga","Rinconada","San Esteban","San Felipe","Llay Llay","Catemu","Panquehue","Putaendo","Santa María"]},{"cod":"025","nom":"QUILLOTA","ubic":"4º Comisaría de Carabineros de Quillota","dir":"Av. Carlos Condell 260","fono":"332433079","comunas":["Limache","Olmué","Quillota","La Cruz","La Calera","Nogales","Hijuelas"]},{"cod":"026","nom":"SAN ANTONIO","ubic":"Subcomisaría de Carabineros Santo Domingo","dir":"Avenida Litoral 335, comuna de Santo Domingo","fono":"352535052","comunas":["Algarrobo","El Quisco","El Tabo","Cartagena","San Antonio","Santo Domingo"]},{"cod":"027","nom":"ISLA DE PASCUA","ubic":"6º Comisaría Isla de Pascua","dir":"Sector Mataveri S/N, Isla de Pascua","fono":"323132612 / 323132600","comunas":["Isla de Pascua"]},{"cod":"028","nom":"SANTIAGO","ubic":"68º Comisaría Control de Armas y Explosivos","dir":"Av. Américo Vespucio Sur 866, Las Condes","fono":"229225390","comunas":["Santiago","La Granja","San Joaquín","Pedro Aguirre Cerda","La Pintana","Macul","Peñalolén","La Florida","La Reina","Las Condes","Ñuñoa","Providencia","Vitacura","Lo Barnechea","La Cisterna","San Miguel","San Ramón","Lo Espejo","El Bosque","Quinta Normal","Maipú","Pudahuel","Lo Prado","Cerrillos","Cerro Navia","Estación Central","Conchalí","Recoleta","Huechuraba","Renca","Independencia","Quilicura"]},{"cod":"032","nom":"COLINA","ubic":"8º Comisaría de Carabineros Colina","dir":"Av. Inmaculada Concepción Nº 575","fono":"229224023","comunas":["Colina","Lampa","Tiltil"]},{"cod":"033","nom":"PUENTE ALTO","ubic":"20º Comisaría de Carabineros Puente Alto","dir":"Calle Balmaceda Nº 463, Puente Alto","fono":"233277106 / 233277099","comunas":["Puente Alto","Pirque","San José de Maipo"]},{"cod":"034","nom":"SAN BERNARDO","ubic":"62º Comisaría San Bernardo","dir":"Av. Colón Sur Nº 0713","fono":"229223006","comunas":["San Bernardo","Calera de Tango","Buin","Paine"]},{"cod":"035","nom":"TALAGANTE","ubic":"23º Comisaría de Carabineros Talagante","dir":"Calle Bombero Hernán Avilés Nº 875, Talagante","fono":"229224329","comunas":["Talagante","Peñaflor","Padre Hurtado","El Monte","Isla de Maipo"]},{"cod":"036","nom":"MELIPILLA","ubic":"24º Comisaría de Carabineros Melipilla","dir":"Silva Chávez 665","fono":"233277267","comunas":["Melipilla","Curacaví","María Pinto","San Pedro","Alhué"]},{"cod":"037","nom":"RANCAGUA","ubic":"1º Comisaría de Carabineros de Rancagua","dir":"Av. San Martín Nº 174","fono":"722972110","comunas":["Rancagua","Graneros","Mostazal","Codegua","Machalí","Doñihue","Coltauco","Coinco","Olivar","Requínoa"]},{"cod":"038","nom":"RENGO","ubic":"4º Comisaría de Rengo","dir":"Errázuriz Nº 290","fono":"722972119","comunas":["Rengo","Malloa","Quinta de Tilcoco","San Vicente de Tagua Tagua","Peumo","Las Cabras","Pichidegua"]},{"cod":"039","nom":"SAN FERNANDO","ubic":"1º Comisaría de Carabineros San Fernando","dir":"Av. Manuel Rodríguez Nº 619, San Fernando","fono":"722972332","comunas":["San Fernando","Chimbarongo","Nancagua","Placilla","Chépica","Lolol","Santa Cruz","Pumanque","Peralillo","Palmilla","Pichilemu","Paredones","Marchigüe","La Estrella","Litueche","Navidad"]},{"cod":"042","nom":"CURICÓ","ubic":"Subcomisaría Santa Fe","dir":"Sector Santa Fe, Islas Australes 2245","fono":"752275046","comunas":["Curicó","Rauco","Romeral","Teno","Molina","Sagrada Familia","Hualañé","Licantén","Vichuquén"]},{"cod":"044","nom":"TALCA","ubic":"3º Comisaría de Carabineros Talca","dir":"4 Norte Nº 687, esquina 1 Poniente","fono":"712571158","comunas":["Talca","San Clemente","San Rafael","Río Claro","Curepto","Pelarco","Pencahue","Maule"]},{"cod":"045","nom":"CONSTITUCIÓN","ubic":"2º Comisaría de Carabineros Constitución","dir":"Calle Portales Nº 420","fono":"712571122","comunas":["Constitución","Empedrado"]},{"cod":"049","nom":"LINARES","ubic":"1º Comisaría de Carabineros Linares","dir":"Avenida Valentín Letelier Nº 376","fono":"732673046","comunas":["Linares","San Javier","Villa Alegre","Longaví","Retiro","Parral","Yerbas Buenas","Colbún"]},{"cod":"051","nom":"CAUQUENES","ubic":"4º Comisaría Cauquenes","dir":"Calle Membrillar 420","fono":"732673144","comunas":["Cauquenes","Chanco","Pelluhue"]},{"cod":"053","nom":"CONCEPCIÓN","ubic":"Galería Comercial Alessandri","dir":"Aníbal Pinto Nº 450, oficina 4","fono":"241214108","comunas":["Concepción","San Pedro de la Paz","Santa Juana","Florida","Hualqui","Chiguayante"]},{"cod":"054","nom":"TALCAHUANO","ubic":"Tenencia Higueras Talcahuano","dir":"Calle Desiderio García Nº 495","fono":"412141313","comunas":["Talcahuano","Penco","Tomé","Hualpén"]},{"cod":"056","nom":"CORONEL","ubic":"4º Comisaría de Carabineros Coronel","dir":"Manuel Montt 798","fono":"412141140","comunas":["Coronel","Lota"]},{"cod":"059","nom":"CHILLÁN","ubic":"2º Comisaría Chillán","dir":"Bulnes 268","fono":"422842112","comunas":["Chillán","Chillán Viejo","Bulnes","San Carlos","Coihueco","Pinto","San Fabián","Portezuelo","Quirihue","Cobquecura","Coelemu","Treguaco","Ránquil","Pemuco","San Ignacio","El Carmen","Ñiquén","Yungay","San Nicolás","Quillón","Ninhue"]},{"cod":"063","nom":"LOS ÁNGELES","ubic":"Edificio Corporativo","dir":"Calle Valdivia 123, 4º piso","fono":"432243039","comunas":["Alto Biobío","Antuco","Cabrero","Laja","Los Ángeles","Mulchén","Nacimiento","Negrete","Quilaco","Quilleco","San Rosendo","Santa Bárbara","Tucapel","Yumbel"]},{"cod":"067","nom":"LEBU","ubic":"2º Comisaría Lebu","dir":"Calle Saavedra Nº 754, Lebu","fono":"412141425","comunas":["Tirúa","Contulmo","Cañete","Los Álamos","Lebu"]},{"cod":"068","nom":"CURANILAHUE","ubic":"Costado 4ª Comisaría Curanilahue","dir":"Caupolicán Nº 958","fono":"412141474","comunas":["Arauco","Curanilahue"]},{"cod":"071","nom":"TEMUCO","ubic":"2º Comisaría Temuco","dir":"Claro Solar 1284, Temuco","fono":"45466136","comunas":["Temuco","Padre Las Casas","Cunco","Melipeuco","Curarrehue","Pucón","Villarrica","Nueva Imperial","Cholchol","Carahue","Saavedra"]},{"cod":"072","nom":"LAUTARO","ubic":"1º Comisaría de Carabineros Lautaro","dir":"Calle Balmaceda 1094","fono":"452466104","comunas":["Lautaro","Vilcún","Galvarino","Perquenco"]},{"cod":"076","nom":"LONCOCHE","ubic":"6º Comisaría de Carabineros Loncoche","dir":"Av. Barros Arana 934","fono":"452466274","comunas":["Loncoche","Gorbea","Pitrufquén","Freire","Toltén","Teodoro Schmidt"]},{"cod":"077","nom":"ANGOL","ubic":"1º Comisaría de Carabineros Angol","dir":"Calle Dieciocho Nº 340, Angol","fono":"452466428","comunas":["Angol","Los Sauces","Purén","Renaico","Traiguén","Lumaco"]},{"cod":"079","nom":"VICTORIA","ubic":"4º Comisaría de Carabineros Victoria","dir":"Sotomayor 315","fono":"452466522","comunas":["Collipulli","Ercilla","Victoria","Curacautín","Lonquimay"]},{"cod":"081","nom":"PUERTO MONTT","ubic":"Subcomisaría FF.EE. Llanquihue","dir":"Calle Deber Cumplido Nº 71, Población Carmela Carvajal","fono":"652765173","comunas":["Maullín","Calbuco","Hualaihué","Puerto Montt","Puerto Varas","Llanquihue","Frutillar","Fresia","Los Muermos","Cochamó"]},{"cod":"083","nom":"VALDIVIA","ubic":"Edificio Fiscal","dir":"Camilo Henríquez 239","fono":"632563102","comunas":["Valdivia","Corral","Los Lagos","Lanco","Máfil","Panguipulli","Mariquina","Paillaco"]},{"cod":"084","nom":"LA UNIÓN","ubic":"3º Comisaría La Unión","dir":"Calle Philippi Nº 766","fono":"642664168","comunas":["La Unión","Río Bueno","Lago Ranco","Futrono"]},{"cod":"086","nom":"OSORNO","ubic":"Edificio Gobernación Provincial","dir":"O'Higgins 667, 1er piso, Osorno","fono":"642664048","comunas":["Osorno","Río Negro","Puerto Octay","Puyehue","Purranque","San Pablo","San Juan de la Costa"]},{"cod":"089","nom":"CASTRO","ubic":"2º Comisaría Castro","dir":"Calle Diego Portales Nº 457, Castro","fono":"652765382","comunas":["Castro","Ancud","Quellón","Queilén","Puqueldón","Chonchi","Dalcahue","Curaco de Vélez","Quinchao","Quemchi"]},{"cod":"093","nom":"PALENA","ubic":"5º Comisaría Palena","dir":"Pedro Montt Nº 765","fono":"652765457","comunas":["Palena","Chaitén","Futaleufú"]},{"cod":"094","nom":"COYHAIQUE","ubic":"1º Comisaría de Carabineros Coyhaique","dir":"Av. General Baquedano Nº 534, Coyhaique","fono":"672567087","comunas":["Coyhaique","Río Ibáñez"]},{"cod":"095","nom":"AYSÉN","ubic":"Cuartel 2 de Carabineros","dir":"Teniente Merino S/N","fono":"672567270 / 672451006","comunas":["Aysén","Lago Verde","Guaitecas","Cisnes"]},{"cod":"096","nom":"CHILE CHICO","ubic":"3º Comisaría de Carabineros Chile Chico","dir":"Avenida B. O'Higgins Nº 532, Chile Chico","fono":"672567153","comunas":["Chile Chico"]},{"cod":"097","nom":"COCHRANE","ubic":"4º Comisaría Cochrane","dir":"Esmeralda 522","fono":"672567175","comunas":["Cochrane","Tortel","O'Higgins"]},{"cod":"098","nom":"PUNTA ARENAS","ubic":"Zona de Carabineros Magallanes y Antártica Chilena","dir":"Lautaro Navarro Nº 1077","fono":"612761090","comunas":["Punta Arenas","Laguna Blanca","San Gregorio","Río Verde"]},{"cod":"099","nom":"PUERTO NATALES","ubic":"2º Comisaría de Carabineros de Puerto Natales","dir":"Calle Ladrilleros Nº 209","fono":"612761148","comunas":["Natales"]},{"cod":"100","nom":"PORVENIR","ubic":"3º Comisaría de Carabineros Porvenir","dir":"Chiloé 880","fono":"612761184","comunas":["Porvenir","Primavera","Timaukel"]},{"cod":"101","nom":"PUERTO WILLIAMS","ubic":"4º Comisaría Puerto Williams","dir":"Piloto Pardo 287","fono":"612761224","comunas":["Cabo de Hornos","Antártica"]},{"cod":"103","nom":"VIÑA DEL MAR","ubic":"1º Comisaría de Carabineros Viña del Mar","dir":"2 Norte 313, Viña del Mar","fono":"323132321","comunas":["Viña del Mar","Quilpué","Villa Alemana","Concón","Quintero","Puchuncaví"]},{"cod":"142","nom":"CGGERM","ubic":"Oficina en la Dirección General de Movilización Nacional","dir":"Vergara 262, Santiago","fono":"233277229","comunas":["Región Metropolitana (Cuartel General)"]}];
+const afDeComuna=c=>{const n=norm(c).trim();return AF.find(a=>a.comunas.some(x=>norm(x)===n))};
+const afTxt=cod=>{const a=AF.find(x=>x.cod===cod);return a?`AF ${+a.cod}`:''};
+/* ---------- estado ---------- */
+const PROD_DEF=[['Munición proyectil único',['PROYECTIL UNICO CALIBRE 9mm.','PROYECTIL UNICO CALIBRE 22','PROYECTIL UNICO CALIBRE 38','PROYECTIL UNICO CALIBRE 6,35','PROYECTIL UNICO CALIBRE 7,65','PROYECTIL UNICO CALIBRE 32','PROYECTIL UNICO CALIBRE 380','PROYECTIL UNICO CALIBRE 40','PROYECTIL UNICO CALIBRE 45','PROYECTIL UNICO CALIBRE 44','PROYECTIL UNICO CALIBRE 308','PROYECTIL UNICO CALIBRE 357','PROYECTIL UNICO CALIBRE 44-40']],['Proyectil múltiple',['PROYECTILES CALIBRE 12','PROYECTILES CALIBRE 16','PROYECTILES CALIBRE 20','PROYECTILES CALIBRE 32','PROYECTILES CALIBRE 28','PROYECTILES CALIBRE 36']],['Pistolas y revólveres',['PISTOLA CALIBRE .22','PISTOLA CALIBRE 40','PISTOLA CALIBRE 380','PISTOLA CALIBRE 9mm.','REVOLVER CALIBRE 22','REVOLVER CALIBRE 38']],['Escopetas y rifles',['ESCOPETA CALIBRE 12','ESCOPETA CALIBRE 16','ESCOPETA CALIBRE 20','ESCOPETA CALIBRE 36','RIFLE CALIBRE 22']],['Cargadores',['CARGADORES']],['Gas',['AEROSOLES LACRIMOGENOS']],['Electroshock',['ELECTROSHOCK']]];
+const prodIni=()=>PROD_DEF.flatMap(([h,L])=>L.map(n=>({id:uid(),hoja:h,nom:n,ini:0,desde:''})));
+const ini=()=>({mov:[],prods:prodIni(),cab:{tipo:'club'},club:{nombre:'',rut:'',dom:'',comuna:'',teso:'',pres:'',fono:'',mail:'',af:'',resol:'',anio:new Date().getFullYear(),valor:0,logo:'',cuotas:[]},socios:[],pagos:[],asis:[],armas:[],sigRec:1,sigCert:1});
+let S=ini();
+/* ---------- guardado: nube (Supabase) o este computador ---------- */
+const SUPA={url:'',key:''};
+let SB=null,UID=null,tGuardar=null;
+function trSupa(m){m=String(m||'');let x;if(x=m.match(/after (\d+) seconds?/i))return`Por seguridad, espera ${x[1]} segundos antes de intentarlo de nuevo.`;
+  const T=[[/invalid login credentials/i,'Correo o clave incorrectos.'],[/email not confirmed/i,'Primero confirma tu correo con el enlace que te llegó (revisa también Spam).'],[/already (registered|been registered)|user already exists/i,'Ese correo ya tiene una cuenta. Usa "Entrar".'],[/password should be at least/i,'La clave es muy corta.'],[/invalid format|unable to validate email/i,'El correo no tiene un formato válido.'],[/rate limit/i,'Demasiados intentos. Espera unos minutos.'],[/failed to fetch|network|load failed/i,'No hay conexión a internet o el servidor no responde.']];
+  for(const[r,t]of T)if(r.test(m))return t;return'Ocurrió un problema: '+m}
+function cargarLib(src){return new Promise((ok,ko)=>{const t=document.createElement('script');t.src=src;t.onload=ok;t.onerror=()=>ko(new Error('No se pudo cargar '+src));document.head.appendChild(t)})}
+async function iniciarSupa(){if(!window.supabase)await cargarLib('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');SB=window.supabase.createClient(SUPA.url,SUPA.key);
+  const ov=document.createElement('div');ov.id='ov';ov.innerHTML=`<div class="panel" style="max-width:420px"><h2>Ingreso al club</h2><p class="note" id="lgMsg">Entra con el correo y la clave del club.</p><div class="grid" style="grid-template-columns:1fr"><label>Correo<input id="lgMail" type="email" autocomplete="username"></label><label>Clave<input id="lgPass" type="password" autocomplete="current-password"></label></div><div class="row" style="margin-top:12px"><button class="btn acc" id="lgIn" type="button">Entrar</button><button class="btn" id="lgUp" type="button">Crear cuenta</button></div></div>`;
+  const msg=(t,bad)=>{const m=ov.querySelector('#lgMsg');m.textContent=t;m.style.color=bad?'var(--acc)':''};
+  const lic=async u=>{const{data,error}=await SB.from('licencias').select('activo,vence').eq('user_id',u.id).maybeSingle();if(error)return'No se pudo revisar la licencia. '+trSupa(error.message);if(!data||!data.activo)return'La cuenta está creada pero todavía no está activada. Avisa a quien te entregó el programa.';if(data.vence&&data.vence<hoy())return'La licencia venció el '+fdm(data.vence)+'.';return''};
+  return new Promise(res=>{const listo=async u=>{const e=await lic(u);if(e){if(!ov.isConnected)document.body.appendChild(ov);msg(e,true);return}ov.remove();res(u)};
+    SB.auth.getSession().then(({data})=>{if(data&&data.session)listo(data.session.user);else document.body.appendChild(ov)});
+    ov.addEventListener('click',async e=>{const id=e.target.id,m=ov.querySelector('#lgMail').value.trim(),p=ov.querySelector('#lgPass').value;
+      if(id==='lgIn'){if(!m||!p)return msg('Escribe el correo y la clave.',true);msg('Entrando…');const{data,error}=await SB.auth.signInWithPassword({email:m,password:p});if(error)return msg(trSupa(error.message),true);listo(data.user)}
+      if(id==='lgUp'){if(!m||p.length<8)return msg('Escribe un correo y una clave de al menos 8 caracteres.',true);const{error}=await SB.auth.signUp({email:m,password:p});if(error)return msg('No se pudo crear la cuenta. '+trSupa(error.message),true);msg('Cuenta creada. Avisa a quien te entregó el programa para que la active y luego aprieta Entrar.')}})})}
+async function cargar(){if(SB){const{data,error}=await SB.from('docs').select('data').eq('owner',UID).eq('col','club').eq('id','datos').maybeSingle();if(error)throw error;return data&&data.data}
+  try{const t=localStorage.getItem('clubSocios');return t?JSON.parse(t):null}catch(_){return null}}
+function guardar(){clearTimeout(tGuardar);tGuardar=setTimeout(guardarYa,600)}
+async function guardarYa(){try{if(SB){const{error}=await SB.from('docs').upsert({owner:UID,col:'club',id:'datos',data:S,updated_at:new Date().toISOString()});if(error)throw error}else localStorage.setItem('clubSocios',JSON.stringify(S));estado('')}catch(e){estado('⚠️ No se pudo guardar: '+(e.message||e))}}
+function estado(t){let el=$('estGuard');if(!el){el=document.createElement('span');el.id='estGuard';el.className='note';$('hBtns').prepend(el)}el.textContent=t||(SB?'Guardado en la nube':'Guardado en este computador')}
+
+/* ---------- cálculos ---------- */
+const club=()=>S.club;
+const socio=n=>S.socios.find(s=>String(s.num)===String(n));
+const valorDe=s=>+s.esp||+club().valor||0;
+const pagosDe=(n,an)=>S.pagos.filter(p=>String(p.num)===String(n)&&(an===undefined||+p.anio===+an));
+function cuotasTot(){return(club().cuotas||[]).reduce((a,c)=>a+(+c.monto||0),0)}
+function exigible(s,corte){const C=club(),tot=cuotasTot()||+C.valor||0,f=tot?valorDe(s)/tot:1;return Math.round((C.cuotas||[]).filter(c=>c.vence&&c.vence<=corte).reduce((a,c)=>a+(+c.monto||0),0)*f)}
+function cxc(corte){const an=+club().anio;return S.socios.map(s=>{const v=valorDe(s),pg=pagosDe(s.num,an).reduce((a,p)=>a+(+p.monto||0),0),sal=Math.max(0,v-pg),ex=Math.min(v,exigible(s,corte)),mo=Math.max(0,ex-pg),ult=S.pagos.filter(p=>String(p.num)===String(s.num)&&p.fecha).map(p=>p.fecha).sort().pop()||'';
+  const est=s.estado==='Inactivo'?'Inactivo':pg>=v&&v>0?'Pagado':mo>0?(pg>0?'En mora':'Sin pago'):pg>0?'Al día':'Sin pago (no vencido)';return{s,v,pg,sal,ex,mo,est,ult}})}
+const estCls=e=>e==='Pagado'||e==='Al día'?'t-ok':e==='En mora'||e==='Sin pago'?'t-bad':e==='Inactivo'?'':'t-warn';
+
+/* ---------- monto en palabras ---------- */
+function palabras(n){n=Math.round(Math.abs(+n||0));if(!n)return'cero';const U=['','un','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve','veinte','veintiún','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve'],D=['','','','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'],C=['','ciento','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+  const m100=x=>x<30?U[x]:D[Math.floor(x/10)]+(x%10?' y '+U[x%10]:''),m1000=x=>x===100?'cien':(x>=100?C[Math.floor(x/100)]+(x%100?' ':''):'')+(x%100?m100(x%100):'');
+  const mill=Math.floor(n/1e6),mil=Math.floor(n%1e6/1000),r=n%1000;let t='';
+  if(mill)t+=(mill===1?'un millón':m1000(mill)+' millones')+' ';if(mil)t+=(mil===1?'':m1000(mil)+' ')+'mil ';if(r)t+=m1000(r);return t.trim().replace(/\s+/g,' ')}
+
+/* ---------- render ---------- */
+let tab='ini';
+function cab(){const C=club();$('hNom').textContent=C.nombre||'Socios y cuotas';const l=$('hLogo');if(C.logo){l.src=C.logo;l.classList.remove('hide')}else l.classList.add('hide');document.title=(C.nombre||'Club')+' · Socios y cuotas';document.querySelectorAll('.anio').forEach(x=>x.textContent=C.anio)}
+const kp=a=>a.map(([l,v,c])=>`<div class="kpi"><span>${l}</span><strong class="${c||''}">${typeof v==='number'?'$'+fmt(v):v}</strong></div>`).join('');
+function render(){cab();document.querySelectorAll('[data-v]').forEach(s=>s.classList.toggle('hide',s.dataset.v!==tab));document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+  const corte=$('cCorte').value||hoy(),X=cxc(corte),T=k=>X.reduce((a,x)=>a+x[k],0);
+  if(tab==='ini'){$('iniTit').textContent=`Resumen · anualidad ${club().anio}`;const v=T('v'),pg=T('pg');$('iniKpi').innerHTML=kp([['Socios',String(S.socios.length)],['Valor total a cobrar',v],['Recaudado',pg],['Por cobrar',T('sal')],['En mora a hoy',T('mo'),'t-bad'],['% recaudado',(v?(pg*100/v).toFixed(1).replace('.',','):'0')+' %']])}
+  if(tab==='club'){const C=club(),F=[['nombre','Nombre del club'],['rut','RUT del club'],['dom','Domicilio'],['comuna','Comuna'],['fono','Teléfono'],['mail','Correo'],['pres','Presidente(a) que firma certificados'],['teso','Tesorero(a) que firma recibos'],['resol','N° inscripción consumidor habitual (DGMN)'],['anio','Año de la anualidad'],['valor','Valor de la anualidad']];
+    const afS=C.af||((afDeComuna(C.comuna)||{}).cod||'');$('clubGrid').innerHTML=`<label>Autoridad fiscalizadora (según comuna)<select data-club="af"><option value="">— elegir —</option>${AF.map(a=>`<option value="${a.cod}" ${a.cod===afS?'selected':''}>AF ${+a.cod} · ${esc(a.nom)} — ${esc(a.comunas.slice(0,6).join(', '))}${a.comunas.length>6?'…':''}</option>`).join('')}</select><span class="note">${afS?esc((AF.find(a=>a.cod===afS)||{}).ubic||'')+(C.af?'':' (propuesta por la comuna)'):'Escribe la comuna y se propone sola'}</span></label>`+F.map(([k,t])=>`<label>${t}<input data-club="${k}" value="${esc(k==='valor'?fmt(C[k]):C[k])}" ${k==='anio'||k==='valor'?'inputmode="numeric"':''}></label>`).join('');
+    const lp=$('logoPrev');if(C.logo){lp.src=C.logo;lp.classList.remove('hide')}else lp.classList.add('hide');
+    $('tCuo').innerHTML=(C.cuotas||[]).map((c,i)=>`<tr><td><input data-cuo="${i}|n" value="${esc(c.n)}"></td><td><input type="date" data-cuo="${i}|vence" value="${esc(c.vence)}"></td><td class="n"><input data-cuo="${i}|monto" value="${fmt(c.monto)}" inputmode="numeric" style="text-align:right;max-width:140px"></td><td><button class="btn sm" data-cuodel="${i}" type="button">Quitar</button></td></tr>`).join('')||'<tr><td colspan="4" class="note">Sin cuotas: agrega al menos una.</td></tr>';
+    const ct=cuotasTot();$('cuoSum').innerHTML=`Suma de cuotas: $${fmt(ct)} ${ct===+C.valor?'<span class="t-ok">✔ cuadra con la anualidad</span>':`<span class="t-bad">≠ anualidad $${fmt(C.valor)}</span>`}`}
+  if(tab==='soc'){const q=norm($('qSoc').value);const L=S.socios.filter(s=>!q||norm(s.num+' '+s.nom+' '+s.rut).includes(q)).sort((a,b)=>(+a.num||0)-(+b.num||0));$('nSoc').textContent=S.socios.length;
+    $('tSoc').innerHTML=L.map(s=>`<tr><td>${esc(s.num)}</td><td>${esc(s.nom)}</td><td>${esc(s.rut)||'<span class="t-warn">falta</span>'}</td><td>${esc([s.dir,s.comuna].filter(Boolean).join(', '))||'<span class="t-warn">falta</span>'}</td><td>${esc(s.tel)}</td><td>${esc(s.estado)}</td><td class="n">${fmt(valorDe(s))}${s.esp?' *':''}</td><td><button class="btn sm" data-socedit="${esc(s.num)}" type="button">Ficha</button></td></tr>`).join('')||'<tr><td colspan="8" class="note">Todavía no hay socios. Cárgalos desde el Excel en Inicio o con «+ Nuevo socio».</td></tr>'}
+  if(tab==='pag'){if(!$('pFec').value)$('pFec').value=hoy();if(!$('pAn').value)$('pAn').value=club().anio;
+    $('dlSoc').innerHTML=S.socios.map(s=>`<option value="${esc(s.num)} · ${esc(s.nom)}">`).join('');
+    $('pCon').innerHTML=['Anualidad completa',...(club().cuotas||[]).map(c=>c.n),'Inscripción','Mensualidad','Abono','Otro'].map(x=>`<option>${esc(x)}</option>`).join('');
+    const ans=[...new Set(S.pagos.map(p=>+p.anio).filter(Boolean))].sort((a,b)=>b-a),fa=$('fAnPag'),cur=fa.value;fa.innerHTML='<option value="">Todos los años</option>'+ans.map(a=>`<option ${String(a)===cur?'selected':''}>${a}</option>`).join('');
+    const q=norm($('qPag').value),L=S.pagos.filter(p=>(!fa.value||String(p.anio)===fa.value)&&(!q||norm(p.rec+' '+p.num+' '+(socio(p.num)||{}).nom+' '+p.concepto+' '+p.trx).includes(q))).sort((a,b)=>(b.rec||'').localeCompare(a.rec||''));$('nPag').textContent=S.pagos.length;
+    $('tPag').innerHTML=L.slice(0,500).map(p=>`<tr><td>${esc(p.rec)}</td><td>${fdm(p.fecha)}</td><td>${esc(p.num)} · ${esc((socio(p.num)||{}).nom||'')}</td><td class="n">${fmt(p.monto)}</td><td>${esc(p.concepto)}</td><td>${esc(p.medio)}${p.especie?' · '+esc(p.especie):''}</td><td>${esc(p.anio)}</td><td style="white-space:nowrap"><button class="btn sm" data-rec="${esc(p.id)}" type="button">Recibo</button> <button class="btn sm" data-pagdel="${esc(p.id)}" type="button">Anular</button></td></tr>`).join('')||'<tr><td colspan="8" class="note">Sin pagos.</td></tr>';pInfo()}
+  if(tab==='cxc'){if(!$('cCorte').value)$('cCorte').value=hoy();const f=$('cFil').value,L=X.filter(x=>!f||x.est===f).sort((a,b)=>b.sal-a.sal);
+    $('cKpi').innerHTML=kp([['Valor a cobrar',T('v')],['Pagado',T('pg')],['Saldo',T('sal')],['Exigible al corte',T('ex')],['En mora',T('mo'),'t-bad']]);
+    $('tCxc').innerHTML=L.map(x=>`<tr><td>${esc(x.s.num)}</td><td>${esc(x.s.nom)}</td><td class="n">${fmt(x.v)}</td><td class="n">${fmt(x.pg)}</td><td class="n">${fmt(x.sal)}</td><td class="n">${fmt(x.ex)}</td><td class="n">${fmt(x.mo)}</td><td><span class="tag ${estCls(x.est)}">${x.est}</span></td><td>${fdm(x.ult)}</td></tr>`).join('')}
+  if(tab==='rep')$('repPrev').innerHTML=reporteHTML();
+  if(tab==='inf')renderInf();
+  if(tab==='asi'||tab==='arm')$('dlSoc').innerHTML=S.socios.map(s=>`<option value="${esc(s.num)} · ${esc(s.nom)}">`).join('');
+  if(tab==='asi'){if(!$('aFec').value)$('aFec').value=hoy();const an=[...new Set([String(new Date().getFullYear()),...S.asis.map(a=>a.fecha.slice(0,4))])].sort().reverse(),sel=$('aAnio'),cur=sel.value||an[0];sel.innerHTML=an.map(a=>`<option ${a===cur?'selected':''}>${a}</option>`).join('');
+    const A=S.asis.filter(a=>a.fecha.slice(0,4)===cur),q=norm($('qAsi').value),G={};A.forEach(a=>{const g=G[a.num]=G[a.num]||{n:0,m:0,u:''};g.n++;g.m+=+a.mun||0;if(a.fecha>g.u)g.u=a.fecha});
+    $('aKpi').innerHTML=kp([['Asistencias '+cur,String(A.length)],['Socios que asistieron',String(Object.keys(G).length)],['Munición entregada',String(fmt(A.reduce((x,a)=>x+(+a.mun||0),0)))]]);
+    $('tAsiRes').innerHTML=S.socios.filter(s=>(!q||norm(s.num+' '+s.nom).includes(q))).map(s=>({s,g:G[s.num]||{n:0,m:0,u:''}})).sort((a,b)=>b.g.n-a.g.n).map(({s,g})=>`<tr><td>${esc(s.num)} · ${esc(s.nom)}</td><td class="n">${g.n}</td><td class="n">${fmt(g.m)}</td><td>${fdm(g.u)}</td><td><button class="btn sm" data-cert="${esc(s.num)}" type="button">Certificado</button></td></tr>`).join('')||'<tr><td colspan="5" class="note">Sin socios.</td></tr>';
+    $('tAsi').innerHTML=A.filter(a=>!q||norm(a.num+' '+(socio(a.num)||{}).nom).includes(q)).sort((a,b)=>b.fecha.localeCompare(a.fecha)).slice(0,400).map(a=>`<tr><td>${fdm(a.fecha)}</td><td>${esc(a.num)} · ${esc((socio(a.num)||{}).nom||'')}</td><td>${esc(a.act)}</td><td>${esc(a.arma||'')}</td><td class="n">${a.mun?fmt(a.mun)+' '+esc(a.cal||''):''}</td><td><button class="btn sm" data-asidel="${a.id}" type="button">Quitar</button></td></tr>`).join('')||'<tr><td colspan="6" class="note">Sin asistencias este año.</td></tr>';aArmas()}
+  if(tab==='arm'){const q=norm($('qArm').value),h=hoy(),en30=new Date(Date.now()+30*864e5).toISOString().slice(0,10),L=S.armas.filter(w=>!q||norm(w.num+' '+(socio(w.num)||{}).nom+' '+w.ser+' '+w.cal+' '+w.mar).includes(q));$('nArm').textContent=S.armas.length;
+    const ven=S.armas.filter(w=>w.ven&&w.ven<h).length,pv=S.armas.filter(w=>w.ven&&w.ven>=h&&w.ven<=en30).length;$('wKpi').innerHTML=kp([['Armas registradas',String(S.armas.length)],['Permisos vencidos',String(ven),ven?'t-bad':''],['Vencen en 30 días',String(pv),pv?'t-warn':'']]);
+    $('tArm').innerHTML=L.sort((a,b)=>(+a.num||0)-(+b.num||0)).map(w=>{const st=w.ven&&w.ven<h?'t-bad':w.ven&&w.ven<=en30?'t-warn':'';return`<tr><td>${esc(w.num)} · ${esc((socio(w.num)||{}).nom||'')}</td><td>${esc(w.tipo)}</td><td>${esc(w.mar)} ${esc(w.mod)}</td><td>${esc(w.cal)}</td><td>${esc(w.ser)}</td><td>${esc(w.ins)}</td><td>${esc(w.uso)}</td><td class="${st}">${fdm(w.ven)}${st==='t-bad'?' (vencido)':st?' (pronto)':''}</td><td><button class="btn sm" data-armdel="${w.id}" type="button">Quitar</button></td></tr>`}).join('')||'<tr><td colspan="9" class="note">Sin armas registradas.</td></tr>'}}
+/* ---------- informe mensual de movimiento ---------- */
+const MESN=['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+function cabD(){const C=club(),K=S.cab||{};return{tipo:K.tipo||'club',raz:K.raz||C.nombre||'',rut:K.rut||C.rut||'',rubro:K.rubro||(K.tipo==='armeria'?'COMERCIANTE DE MUNICION':'CLUB DE TIRO'),resol:K.resol||C.resol||'',dir:K.dir||C.dom||'',ciudad:K.ciudad||C.comuna||'',insc:K.insc||'',reg:K.reg||'',rep:K.rep||C.pres||'',af:K.af||C.af||((afDeComuna(C.comuna)||{}).cod||''),emi:K.emi||hoy()}}
+function saldoAntes(pr,mes){let x=+pr.ini||0;S.mov.forEach(m=>{if(m.prod===pr.id&&m.mes<mes&&(!pr.desde||m.mes>=pr.desde))x+=(+m.ent||0)-(+m.sal||0)});return x}
+function movMes(mes){return S.mov.filter(m=>m.mes===mes).sort((a,b)=>a.fecha.localeCompare(b.fecha))}
+function renderInf(){const K=cabD(),mes=$('iMes').value||hoy().slice(0,7);if(!$('iMes').value)$('iMes').value=mes;if(!$('mFec').value)$('mFec').value=hoy();if(!$('mMes').value)$('mMes').value=hoy().slice(0,7);
+  const F=[['tipo','Tipo de informe'],['raz','Razón social'],['rut','RUT'],['rubro','Rubro'],['resol','Resolución'],['dir','Dirección'],['ciudad','Ciudad'],['insc','Inscripción anual'],['reg','Registro nacional'],['rep','Representante legal'],['af','Autoridad fiscalizadora'],['emi','Fecha de emisión']];
+  $('iCab').innerHTML=F.map(([k,t])=>k==='tipo'?`<label>${t}<select data-cab="tipo"><option value="club" ${K.tipo==='club'?'selected':''}>Informe mensual del club</option><option value="armeria" ${K.tipo==='armeria'?'selected':''}>Informe comercial armería</option></select></label>`:k==='af'?`<label>${t}<select data-cab="af"><option value="">—</option>${AF.map(a=>`<option value="${a.cod}" ${a.cod===K.af?'selected':''}>AF ${+a.cod} · ${esc(a.nom)}</option>`).join('')}</select></label>`:`<label>${t}<input data-cab="${k}" ${k==='emi'?'type="date"':''} value="${esc(K[k])}"></label>`).join('');
+  $('mProd').innerHTML=S.prods.map(p=>`<option value="${p.id}">${esc(p.hoja)} · ${esc(p.nom)}</option>`).join('');
+  if(!$('mAF').options.length)$('mAF').innerHTML='<option value="">—</option>'+AF.map(a=>`<option value="${+a.cod}">AF ${+a.cod} · ${esc(a.nom)} — ${esc(a.comunas.slice(0,5).join(', '))}${a.comunas.length>5?'…':''}</option>`).join('');
+  const L=movMes(mes),pn=id=>(S.prods.find(p=>p.id===id)||{}).nom||'?';
+  $('tMov').innerHTML=L.map(m=>`<tr><td>${fdm(m.fecha)}${m.fecha.slice(0,7)!==m.mes?' <span class="note">(otro mes)</span>':''}</td><td>${esc(pn(m.prod))}</td><td>${esc(m.td)}</td><td>${m.af?'AF '+esc(m.af):''}</td><td>${esc(m.rut)}</td><td>${esc(m.nom)}</td><td class="n">${fmt(m.ent)}</td><td class="n">${fmt(m.sal)}</td><td><button class="btn sm" data-movdel="${m.id}" type="button">Quitar</button></td></tr>`).join('')||'<tr><td colspan="9" class="note">Sin movimientos informados en este mes: todos los productos saldrán como «SIN MOV.».</td></tr>';
+  const neg=S.prods.filter(p=>{let x=saldoAntes(p,mes);return movMes(mes).filter(m=>m.prod===p.id).some(m=>(x+=(+m.ent||0)-(+m.sal||0))<0)}),otro=L.filter(m=>m.fecha.slice(0,7)!==m.mes).length;
+  $('iKpi').innerHTML=kp([['Movimientos del mes',String(L.length)],['Entradas',String(fmt(L.reduce((a,m)=>a+(+m.ent||0),0)))],['Salidas',String(fmt(L.reduce((a,m)=>a+(+m.sal||0),0)))]]);
+  $('iRev').innerHTML=(neg.length?`<p class="t-bad">⚠ REVISAR: saldo negativo en ${neg.map(p=>esc(p.nom)).join(', ')}.</p>`:'<p class="t-ok">✔ Sin saldos negativos.</p>')+(otro?`<p class="note">ℹ ${otro} documento${otro>1?'s':''} de otro mes informado${otro>1?'s':''} en este mes (correcto si llegaron fuera de plazo).</p>`:'');
+  $('tProd').innerHTML=S.prods.map(p=>`<tr><td>${esc(p.hoja)}</td><td>${esc(p.nom)}</td><td class="n"><input data-pini="${p.id}" value="${fmt(p.ini)}" inputmode="numeric" style="max-width:110px;text-align:right"></td><td><input type="month" data-pdes="${p.id}" value="${esc(p.desde||'')}"></td><td class="n">${fmt(saldoAntes(p,'9999-12'))}</td><td><button class="btn sm" data-pdel="${p.id}" type="button">Quitar</button></td></tr>`).join('')}
+function informeHTML(mes){const K=cabD(),[y,m]=mes.split('-'),mesTxt=MESN[+m-1]+' '+y,hojas=[...new Set(S.prods.map(p=>p.hoja))];
+  const hdr=`<div style="text-align:center;font-weight:700;font-size:15px;margin-bottom:6px">INFORME MENSUAL SOBRE MOVIMIENTO COMERCIAL</div><table style="width:100%;font-size:12px"><tr><td>FECHA: ${fdm(K.emi)}</td><td>MES: ${mesTxt}</td></tr><tr><td>RAZON SOCIAL: ${esc(K.raz)}</td><td>RUBRO: ${esc(K.rubro)}</td></tr><tr><td>RUT: ${esc(K.rut)}</td><td>RESOLUCION: ${esc(K.resol)}</td></tr><tr><td>DIRECCION: ${esc(K.dir)}</td><td>INSC. ANUAL: ${esc(K.insc)}</td></tr><tr><td>CIUDAD: ${esc(K.ciudad)}</td><td>REG. NACIONAL: ${esc(K.reg)}</td></tr></table>`;
+  const firma=`<table style="width:100%;margin-top:40px;text-align:center;font-size:12px"><tr><td>______________________________<br>REVISADO POR AUTORIDAD${K.af?' AF '+(+K.af):''}<br>NOMBRE Y FIRMA</td><td>______________________________<br>${esc(K.rep)}<br>REPRESENTANTE LEGAL</td></tr></table>`;
+  const port=`<div style="page-break-after:always;text-align:center;padding-top:200px"><div style="font-size:26px;font-weight:700">${K.tipo==='armeria'?'INFORME COMERCIAL ARMERIA':'INFORME MENSUAL CLUB DE TIRO'}</div><div style="font-size:20px;margin-top:30px">${esc(K.raz)}</div><div style="font-size:18px;margin-top:14px">${MESN[+m-1].charAt(0)+MESN[+m-1].slice(1).toLowerCase()},${y}</div></div>`;
+  return port+hojas.map(h=>`<div style="page-break-after:always">${hdr}${S.prods.filter(p=>p.hoja===h).map(p=>{let x=saldoAntes(p,mes);const L=movMes(mes).filter(mv=>mv.prod===p.id);
+    return`<div style="font-weight:700;margin:12px 0 4px">${esc(p.nom)}</div><table style="width:100%;border-collapse:collapse;font-size:11px" border="1" cellpadding="3"><tr><th colspan="4">DOCUMENTO</th><th rowspan="2">NOMBRE</th><th rowspan="2">SALDO INICIAL</th><th rowspan="2">ENTRADAS</th><th rowspan="2">SALIDAS</th><th rowspan="2">SALDO FINAL</th></tr><tr><th>FECHA</th><th>TD</th><th>AUTOR. FISC.</th><th>RUT</th></tr>${L.length?L.map(mv=>{const si=x;x+=(+mv.ent||0)-(+mv.sal||0);return`<tr><td>${fdm(mv.fecha)}</td><td>${esc(mv.td)}</td><td>${esc(mv.af)}</td><td>${esc(mv.rut)}</td><td>${esc(mv.nom)}</td><td align="right">${fmt(si)}</td><td align="right">${fmt(mv.ent)}</td><td align="right">${fmt(mv.sal)}</td><td align="right">${fmt(x)}</td></tr>`}).join(''):`<tr><td colspan="5" align="center">SIN MOV.</td><td align="right">${fmt(x)}</td><td align="right">0</td><td align="right">0</td><td align="right">${fmt(x)}</td></tr>`}</table>`}).join('')}${firma}</div>`).join('')}
+function socDe(inp){const v=$(inp).value.trim(),n=v.split('·')[0].trim();return socio(n)||S.socios.find(s=>norm(s.nom)===norm(v))}
+function aArmas(){const s=socDe('aSoc'),L=s?S.armas.filter(w=>String(w.num)===String(s.num)):[];$('aArma').innerHTML='<option value="">—</option>'+L.map(w=>`<option>${esc(w.tipo+' '+w.mar+' '+w.cal+' · '+w.ser)}</option>`).join('')}
+function certHTML(s,num){const C=club(),y=String(new Date().getFullYear()),A=S.asis.filter(a=>String(a.num)===String(s.num)&&a.fecha.slice(0,4)===y),W=S.armas.filter(w=>String(w.num)===String(s.num)),x=cxc(hoy()).find(z=>String(z.s.num)===String(s.num))||{},af=C.af||((afDeComuna(C.comuna)||{}).cod||'');
+  return`<div class="rc">${encab(C)}<hr><div class="top"><div class="big">CERTIFICADO DE SOCIO</div><div class="big">N° ${esc(num)}</div></div><p>Fecha: <b>${fdm(hoy())}</b>${af?` · Autoridad fiscalizadora: <b>${afTxt(af)}</b>`:''}${C.resol?` · Inscripción consumidor habitual N° <b>${esc(C.resol)}</b>`:''}</p>
+  <p style="text-align:justify">El ${esc(C.nombre||'club')}${C.rut?', RUT '+esc(C.rut):''}, certifica que don(ña) <b>${esc(s.nom)}</b>, RUT <b>${esc(s.rut||'—')}</b>, domiciliado(a) en ${esc([s.dir,s.comuna].filter(Boolean).join(', ')||'—')}, es socio(a) N° <b>${esc(s.num)}</b> de esta institución${s.ingreso?' desde el '+fdm(s.ingreso):''}, en calidad de <b>${s.estado==='Activo'?'socio activo':esc(s.estado)}</b>${s.cred?', con credencial vigente hasta el '+fdm(s.cred):''}, y que durante el año ${y} registra <b>${A.length}</b> asistencia${A.length===1?'':'s'} a actividades de tiro del club.</p>
+  ${W.length?`<p><b>Armas inscritas declaradas por el socio:</b></p><table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left">Tipo</th><th style="text-align:left">Marca / modelo</th><th style="text-align:left">Calibre</th><th style="text-align:left">N° serie</th><th style="text-align:left">N° inscripción</th><th style="text-align:left">Uso</th></tr>${W.map(w=>`<tr><td>${esc(w.tipo)}</td><td>${esc(w.mar)} ${esc(w.mod)}</td><td>${esc(w.cal)}</td><td>${esc(w.ser)}</td><td>${esc(w.ins)}</td><td>${esc(w.uso)}</td></tr>`).join('')}</table>`:''}
+  ${A.length?`<p style="font-size:12px"><b>Detalle de asistencias ${y}:</b> ${A.sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(a=>fdm(a.fecha)+' ('+esc(a.act)+')').join(', ')}</p>`:''}
+  <p>Situación de cuotas de la anualidad ${esc(C.anio)}: <b>${esc(x.est||'—')}</b>.</p>
+  <p>Se extiende el presente certificado a petición del interesado, para los fines que estime conveniente.</p>
+  <div class="firma"><div>______________________________<br>${esc(C.pres||'Presidente(a)')}<br>Presidente(a)</div><div>______________________________<br>${esc(C.teso||'Secretario(a) / Tesorero(a)')}<br>Secretario(a) / Tesorero(a)</div></div></div>`}
+function verCert(n){const s=socio(n);if(!s)return;const num='C-'+String(S.sigCert||1).padStart(4,'0'),ov=document.createElement('div');ov.id='ov';ov.innerHTML=`<div class="panel" style="background:#fff;color:#000">${certHTML(s,num)}<div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn acc" type="button" data-x="imp">🖨️ Imprimir o guardar PDF</button><button class="btn" type="button" data-x="cer" style="color:#000;border-color:#000">Cerrar</button></div></div>`;document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{const x=e.target.dataset.x;if(x==='cer'||e.target===ov)ov.remove();if(x==='imp'){imprimir(certHTML(s,num));S.sigCert=(S.sigCert||1)+1;guardar()}})}
+
+/* ---------- recibo y reporte (imprimibles) ---------- */
+function encab(C){return`<div class="top"><div>${C.logo?`<img src="${C.logo}" alt="">`:''}</div><div style="text-align:right"><div class="big">${esc(C.nombre||'Club')}</div><div>${C.rut?'RUT '+esc(C.rut):''}</div><div>${esc([C.dom,C.comuna].filter(Boolean).join(', '))}</div><div>${esc([C.fono,C.mail].filter(Boolean).join(' · '))}</div></div></div>`}
+function reciboHTML(p){const C=club(),s=socio(p.num)||{nom:'(socio no encontrado)'},v=valorDe(s),pg=pagosDe(p.num,p.anio).filter(x=>x.rec<=p.rec).reduce((a,x)=>a+(+x.monto||0),0);
+  return`<div class="rc">${encab(C)}<hr><div class="top"><div class="big">RECIBO DE PAGO</div><div class="big">N° ${esc(p.rec)}</div></div><p>Fecha: <b>${fdm(p.fecha)}</b></p>
+  <table><tr><td>Recibí de</td><td><b>${esc(s.nom)}</b></td></tr><tr><td>N° de socio</td><td>${esc(p.num)}</td></tr><tr><td>RUT</td><td>${esc(s.rut||'—')}</td></tr><tr><td>Dirección</td><td>${esc([s.dir,s.comuna].filter(Boolean).join(', ')||'—')}</td></tr>
+  <tr><td>La suma de</td><td class="big">$ ${fmt(p.monto)}</td></tr><tr><td>En palabras</td><td>${palabras(p.monto).toUpperCase()} PESOS</td></tr><tr><td>Por concepto de</td><td>${esc(p.concepto)} · anualidad ${esc(p.anio)}</td></tr>
+  <tr><td>Medio de pago</td><td>${esc(p.medio)}${p.especie?' — bien entregado: '+esc(p.especie):''}</td></tr>${p.trx?`<tr><td>N° de transacción</td><td>${esc(p.trx)}</td></tr>`:''}${p.obs?`<tr><td>Observación</td><td>${esc(p.obs)}</td></tr>`:''}</table>
+  <p style="margin-top:12px"><b>Estado de la cuenta del socio (anualidad ${esc(p.anio)})</b>: valor $${fmt(v)} · pagado a la fecha $${fmt(pg)} · saldo $${fmt(Math.max(0,v-pg))}</p>
+  <div class="firma"><div>______________________________<br>${esc(C.teso||'Tesorero(a)')}<br>Tesorero(a)</div><div>______________________________<br>${esc(s.nom)}<br>Socio</div></div>
+  <p style="font-size:11px;margin-top:18px">Comprobante interno de pago de cuota social. No reemplaza boleta ni documento tributario.</p></div>`}
+function imprimir(html){$('print').innerHTML=html;setTimeout(()=>window.print(),150)}
+function verRecibo(p){const ov=document.createElement('div');ov.id='ov';ov.innerHTML=`<div class="panel" style="background:#fff;color:#000">${reciboHTML(p)}<div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn acc" type="button" data-x="imp">🖨️ Imprimir o guardar PDF</button><button class="btn" type="button" data-x="cer" style="color:#000;border-color:#000">Cerrar</button></div></div>`;document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{const x=e.target.dataset.x;if(x==='cer'||e.target===ov)ov.remove();if(x==='imp')imprimir(reciboHTML(p))})}
+function reporteHTML(){const C=club(),corte=$('cCorte').value||hoy(),X=cxc(corte),T=k=>X.reduce((a,x)=>a+x[k],0),v=T('v'),pg=T('pg');const est=['Pagado','Al día','En mora','Sin pago','Sin pago (no vencido)','Inactivo'];
+  return`<div class="rc rep">${encab(C)}<hr><div class="big">REPORTE DE CUOTAS DE SOCIOS</div><p>Anualidad ${esc(C.anio)} · fecha de corte ${fdm(corte)}</p>
+  <table><tr><td>Socios en el control</td><td class="n">${S.socios.length}</td></tr><tr><td>Valor total a cobrar</td><td class="n">$${fmt(v)}</td></tr><tr><td>Total recaudado</td><td class="n">$${fmt(pg)}</td></tr><tr><td>Saldo por cobrar</td><td class="n">$${fmt(T('sal'))}</td></tr><tr><td>% de recaudación</td><td class="n">${v?(pg*100/v).toFixed(1).replace('.',','):'0'} %</td></tr><tr><td>Exigible a la fecha</td><td class="n">$${fmt(T('ex'))}</td></tr><tr><td>En mora</td><td class="n">$${fmt(T('mo'))}</td></tr></table>
+  <h3>Socios por estado</h3><table><tr><th>Estado</th><th class="n">Socios</th><th class="n">Saldo</th></tr>${est.map(e=>{const L=X.filter(x=>x.est===e);return`<tr><td>${e}</td><td class="n">${L.length}</td><td class="n">$${fmt(L.reduce((a,x)=>a+x.sal,0))}</td></tr>`}).join('')}</table>
+  <h3>Recaudación por mes</h3><table><tr><th>Mes</th><th class="n">Pagos</th><th class="n">Monto</th></tr>${(()=>{const M={};S.pagos.filter(p=>+p.anio===+C.anio).forEach(p=>{const k=(p.fecha||'sin fecha').slice(0,7);M[k]=M[k]||[0,0];M[k][0]++;M[k][1]+=+p.monto||0});return Object.keys(M).sort().map(k=>`<tr><td>${k==='sin fecha'?k:k.split('-').reverse().join('-')}</td><td class="n">${M[k][0]}</td><td class="n">$${fmt(M[k][1])}</td></tr>`).join('')})()}</table>
+  <h3>Socios con saldo</h3><table><tr><th>N°</th><th>Socio</th><th class="n">Pagado</th><th class="n">Saldo</th><th>Estado</th></tr>${X.filter(x=>x.sal>0).sort((a,b)=>b.sal-a.sal).map(x=>`<tr><td>${esc(x.s.num)}</td><td>${esc(x.s.nom)}</td><td class="n">$${fmt(x.pg)}</td><td class="n">$${fmt(x.sal)}</td><td>${x.est}</td></tr>`).join('')}</table>
+  <div class="firma"><div>______________________________<br>${esc(C.teso||'Tesorero(a)')}<br>Tesorero(a)</div></div></div>`}
+
+/* ---------- ficha de socio ---------- */
+function ficha(num){const nuevo=num===undefined,s=nuevo?{num:String(Math.max(0,...S.socios.map(x=>+x.num||0))+1),nom:'',rut:'',dir:'',comuna:'',tel:'',mail:'',estado:'Activo',cred:'',ingreso:'',esp:'',obs:''}:{...socio(num)};
+  const F=[['num','N° de socio'],['nom','Nombre completo'],['rut','RUT'],['dir','Dirección'],['comuna','Comuna'],['tel','Teléfono'],['mail','Correo'],['ingreso','Fecha de ingreso al club','date'],['cred','Credencial vigente hasta','date'],['esp','Valor especial de anualidad (vacío = normal)'],['obs','Observación']];
+  const P=nuevo?[]:S.pagos.filter(p=>String(p.num)===String(s.num)).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const ov=document.createElement('div');ov.id='ov';ov.innerHTML=`<div class="panel"><h2>${nuevo?'Nuevo socio':'Ficha del socio N° '+esc(s.num)}</h2><div class="grid">${F.map(([k,t,ty])=>`<label>${t}<input data-f="${k}" ${ty?`type="${ty}"`:''} value="${esc(k==='esp'&&s.esp?fmt(s.esp):s[k])}"></label>`).join('')}<label>Estado<select data-f="estado">${['Activo','Inactivo','Suspendido'].map(x=>`<option ${s.estado===x?'selected':''}>${x}</option>`).join('')}</select></label></div>
+   ${nuevo?'':`<h2 style="margin-top:14px">Pagos del socio</h2><table><tr><th>Recibo</th><th>Fecha</th><th class="n">Monto</th><th>Concepto</th><th>Año</th></tr>${P.map(p=>`<tr><td>${esc(p.rec)}</td><td>${fdm(p.fecha)}</td><td class="n">${fmt(p.monto)}</td><td>${esc(p.concepto)}</td><td>${esc(p.anio)}</td></tr>`).join('')||'<tr><td colspan="5" class="note">Sin pagos.</td></tr>'}</table>`}
+   <p class="msg err" id="fMsg"></p><div class="row" style="justify-content:flex-end"><button class="btn acc" type="button" data-x="ok">Guardar</button>${nuevo?'':'<button class="btn" type="button" data-x="crt">📄 Certificado</button><button class="btn" type="button" data-x="del">Eliminar socio</button>'}<button class="btn" type="button" data-x="cer">Cerrar</button></div></div>`;document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{const x=e.target.dataset.x;if(x==='cer')ov.remove();if(x==='crt'){ov.remove();verCert(num)}
+    if(x==='del'){if(pagosDe(s.num).length){ov.querySelector('#fMsg').textContent='No se puede eliminar: el socio tiene pagos. Cámbialo a estado Inactivo.';return}S.socios=S.socios.filter(z=>String(z.num)!==String(num));guardar();ov.remove();render()}
+    if(x==='ok'){const d={};ov.querySelectorAll('[data-f]').forEach(i=>d[i.dataset.f]=i.value.trim());d.esp=d.esp?num(d.esp):'';if(!d.num||!d.nom){ov.querySelector('#fMsg').textContent='El N° de socio y el nombre son obligatorios.';return}
+      if(S.socios.some(z=>String(z.num)===d.num&&String(z.num)!==String(num))){ov.querySelector('#fMsg').textContent='Ese N° de socio ya existe.';return}
+      if(nuevo)S.socios.push(d);else{const i=S.socios.findIndex(z=>String(z.num)===String(num));S.pagos.forEach(p=>{if(String(p.num)===String(num))p.num=d.num});S.socios[i]={...S.socios[i],...d}}guardar();ov.remove();render()}})}
+
+/* ---------- pagos ---------- */
+function pSocio(){const v=$('pSoc').value.trim(),n=v.split('·')[0].trim();return socio(n)||S.socios.find(s=>norm(s.nom)===norm(v))}
+function pInfo(){const s=pSocio(),an=+$('pAn').value||club().anio;if(!s){$('pInfo').textContent='';return}const v=valorDe(s),pg=pagosDe(s.num,an).reduce((a,p)=>a+(+p.monto||0),0);$('pInfo').textContent=`${s.nom}: anualidad ${an} $${fmt(v)} · pagado $${fmt(pg)} · saldo $${fmt(Math.max(0,v-pg))}`}
+function sigRecibo(){const mx=Math.max(0,...S.pagos.map(p=>+String(p.rec).replace(/\D/g,'')||0));return'R-'+String(Math.max(mx+1,S.sigRec||1)).padStart(4,'0')}
+
+/* ---------- importar Excel ---------- */
+async function importarXls(file){const m=$('msgXls');m.className='msg';m.textContent='Leyendo el Excel…';
+  try{if(!window.XLSX)await cargarLib('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+    const wb=XLSX.read(await file.arrayBuffer(),{cellDates:true}),hoja=n=>{const k=wb.SheetNames.find(x=>norm(x).trim()===norm(n));return k?XLSX.utils.sheet_to_json(wb.Sheets[k],{header:1,raw:true,defval:''}):null};
+    const fecha=v=>v instanceof Date?new Date(v.getTime()-v.getTimezoneOffset()*6e4).toISOString().slice(0,10):(typeof v==='string'&&/^\d{1,2}-\d{1,2}-\d{4}$/.test(v)?v.split('-').reverse().map(x=>x.padStart(2,'0')).join('-'):'');
+    const N=ini(),P=hoja('Parametros');
+    if(P){const val=t=>{const r=P.find(r=>norm(r[0]).startsWith(norm(t)));return r?r[1]:''};const C=N.club;C.nombre=String(val('Nombre del club')||'');C.rut=String(val('RUT del club')||'');C.dom=String(val('Domicilio del club')||'');C.teso=String(val('Tesorero')||'');C.anio=+val('Año de la anualidad')||C.anio;C.valor=num(val('Valor de la anualidad'));
+      const i=P.findIndex(r=>norm(r[0])==='concepto'&&norm(r[1])==='vence');if(i>=0)for(let k=i+1;k<P.length&&P[k][0];k++){const mo=num(P[k][2]);if(mo)C.cuotas.push({n:String(P[k][0]).replace(/\s*\(.*\)/,''),vence:fecha(P[k][1]),monto:mo})}
+      ['nombre','rut','dom','teso'].forEach(k=>{if(/^complete|^nombre que/i.test(C[k]))C[k]=''})}
+    const So=hoja('Socios');if(!So)throw new Error('No encontré la hoja «Socios».');const h=So.findIndex(r=>norm(r[0]).startsWith('n° socio')||norm(r[0]).startsWith('n socio'));
+    for(let k=h+1;k<So.length;k++){const r=So[k];if(r[0]===''||r[1]==='')continue;N.socios.push({num:String(r[0]),nom:String(r[1]).trim(),rut:String(r[2]||'').trim(),mail:String(r[3]||'').trim(),tel:String(r[4]||'').trim(),estado:String(r[5]||'Activo').trim()||'Activo',cred:fecha(r[6]),dir:'',comuna:'',ingreso:'',esp:num(r[10])||'',obs:String(r[8]||'').trim()})}
+    const Ls=hoja('Lista de socios');if(Ls){const hh=Ls.findIndex(r=>norm(r[0]).trim()==='nombre');if(hh>=0)for(let k=hh+1;k<Ls.length;k++){const r=Ls[k];if(!r[0])continue;const s=N.socios.find(x=>String(x.num)===String(r[2]))||N.socios.find(x=>norm(x.nom)===norm(r[0]));if(s){if(!s.rut)s.rut=String(r[1]||'');if(!s.tel)s.tel=String(r[3]||'');s.dir=String(r[6]||'').trim()}else N.socios.push({num:String(r[2]||''),nom:String(r[0]).trim(),rut:String(r[1]||''),tel:String(r[3]||''),dir:String(r[6]||'').trim(),comuna:'',mail:'',estado:'Activo',cred:'',ingreso:'',esp:'',obs:''})}}
+    const Pa=hoja('Pagos');if(Pa){const hp=Pa.findIndex(r=>norm(r[0]).startsWith('n° recibo')||norm(r[0]).startsWith('n recibo'));for(let k=hp+1;k<Pa.length;k++){const r=Pa[k];if(!String(r[0]).startsWith('R-')||!num(r[4]))continue;N.pagos.push({id:uid(),rec:String(r[0]),fecha:fecha(r[1]),num:String(r[2]),monto:num(r[4]),concepto:String(r[5]||''),medio:String(r[6]||''),trx:String(r[7]||''),obs:String(r[8]||''),anio:+r[9]||N.club.anio,especie:/especie|parte de pago/i.test(String(r[8])+String(r[6]))?String(r[8]||''):''})}}
+    N.club.logo=S.club.logo||'';['pres','resol','af','comuna','fono','mail'].forEach(k=>{if(!N.club[k]&&S.club[k])N.club[k]=S.club[k]});N.asis=S.asis||[];N.armas=S.armas||[];N.mov=S.mov||[];N.prods=S.prods&&S.prods.length?S.prods:prodIni();N.cab=S.cab||{tipo:'club'};S=N;S.sigRec=S.pagos.length+1;await guardarYa();m.textContent=`Listo: ${S.socios.length} socios y ${S.pagos.length} pagos cargados de «${file.name}».`;render()}
+  catch(e){m.className='msg err';m.textContent='No se pudo leer el Excel: '+(e.message||e)}}
+
+/* ---------- eventos ---------- */
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(!b)return;tab=b.dataset.t;render()});
+$('fXls').addEventListener('change',e=>{const f=e.target.files[0];if(f)importarXls(f);e.target.value=''});
+document.addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.club){const k=t.dataset.club;S.club[k]=k==='valor'||k==='anio'?num(t.value):t.value.trim();guardar();render()}
+  if(t.dataset.cuo){const[i,k]=t.dataset.cuo.split('|');S.club.cuotas[+i][k]=k==='monto'?num(t.value):t.value;guardar();render()}});
+document.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.cuodel!==undefined){S.club.cuotas.splice(+t.dataset.cuodel,1);guardar();render()}
+  if(t.dataset.socedit!==undefined)ficha(t.dataset.socedit);
+  if(t.dataset.rec){const p=S.pagos.find(x=>x.id===t.dataset.rec);if(p)verRecibo(p)}
+  if(t.dataset.pagdel){const p=S.pagos.find(x=>x.id===t.dataset.pagdel);if(p&&confirm(`¿Anular el recibo ${p.rec} por $${fmt(p.monto)}? Se elimina del registro.`)){S.pagos=S.pagos.filter(x=>x!==p);guardar();render()}}});
+$('aSoc').addEventListener('input',aArmas);['aAnio','qAsi','qArm'].forEach(i=>$(i).addEventListener('input',render));
+$('bAsi').addEventListener('click',()=>{const m=$('msgAsi'),s=socDe('aSoc');m.className='msg err';if(!s){m.textContent='Elige un socio de la lista.';return}if(!$('aFec').value){m.textContent='Escribe la fecha.';return}
+  S.asis.push({id:uid(),fecha:$('aFec').value,num:String(s.num),act:$('aAct').value,arma:$('aArma').value,mun:num($('aMun').value)||0,cal:$('aCal').value.trim()});guardar();m.className='msg';m.textContent=`Asistencia de ${s.nom} guardada.`;['aSoc','aMun','aCal'].forEach(i=>$(i).value='');render()});
+$('bArm').addEventListener('click',()=>{const m=$('msgArm'),s=socDe('wSoc');m.className='msg err';if(!s){m.textContent='Elige un socio de la lista.';return}if(!$('wSer').value.trim()){m.textContent='Escribe el N° de serie.';return}
+  S.armas.push({id:uid(),num:String(s.num),tipo:$('wTipo').value,mar:$('wMar').value.trim(),mod:$('wMod').value.trim(),cal:$('wCal').value.trim(),ser:$('wSer').value.trim(),ins:$('wIns').value.trim(),uso:$('wUso').value,ven:$('wVen').value});guardar();m.className='msg';m.textContent=`Arma registrada a ${s.nom}.`;['wSoc','wMar','wMod','wCal','wSer','wIns','wVen'].forEach(i=>$(i).value='');render()});
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('button');if(!t)return;if(t.dataset.cert)verCert(t.dataset.cert);if(t.dataset.asidel){S.asis=S.asis.filter(a=>a.id!==t.dataset.asidel);guardar();render()}if(t.dataset.armdel&&confirm('¿Quitar esta arma del registro?')){S.armas=S.armas.filter(w=>w.id!==t.dataset.armdel);guardar();render()}});
+$('iMes').addEventListener('input',render);$('mFec').addEventListener('change',()=>{$('mMes').value=$('mFec').value.slice(0,7)});
+$('bMov').addEventListener('click',()=>{const m=$('msgMov');m.className='msg err';const e=num($('mEnt').value),sa=num($('mSal').value);if(!$('mFec').value||!$('mMes').value){m.textContent='Escribe la fecha y el mes en que se informa.';return}if(!e&&!sa){m.textContent='Escribe la cantidad de entradas o salidas.';return}
+  S.mov.push({id:uid(),fecha:$('mFec').value,mes:$('mMes').value,prod:$('mProd').value,td:$('mTD').value,af:$('mAF').value,rut:$('mRut').value.trim(),nom:$('mNom').value.trim(),ent:e,sal:sa});guardar();m.className='msg';m.textContent='Movimiento guardado.';['mRut','mNom','mEnt','mSal'].forEach(i=>$(i).value='');$('iMes').value=$('mMes').value;render()});
+$('bInf').addEventListener('click',()=>imprimir(informeHTML($('iMes').value||hoy().slice(0,7))));
+$('bProd').addEventListener('click',()=>{const h=$('pHoja').value.trim(),n=$('pNom').value.trim();if(!h||!n)return;S.prods.push({id:uid(),hoja:h,nom:n.toUpperCase(),ini:0,desde:''});$('pNom').value='';guardar();render()});
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset.cab){S.cab=S.cab||{};S.cab[t.dataset.cab]=t.value.trim();guardar();render()}if(t.dataset.pini){const p=S.prods.find(x=>x.id===t.dataset.pini);if(p){p.ini=num(t.value);guardar();render()}}if(t.dataset.pdes){const p=S.prods.find(x=>x.id===t.dataset.pdes);if(p){p.desde=t.value;guardar();render()}}});
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('button');if(!t)return;if(t.dataset.movdel){S.mov=S.mov.filter(m=>m.id!==t.dataset.movdel);guardar();render()}if(t.dataset.pdel){if(S.mov.some(m=>m.prod===t.dataset.pdel)){alert('Ese producto tiene movimientos: no se puede quitar.');return}S.prods=S.prods.filter(p=>p.id!==t.dataset.pdel);guardar();render()}});
+$('bCuoAdd').addEventListener('click',()=>{(S.club.cuotas=S.club.cuotas||[]).push({n:'Cuota '+(S.club.cuotas.length+1),vence:'',monto:0});guardar();render()});
+$('bSocNew').addEventListener('click',()=>ficha());
+['qSoc','qPag','fAnPag','cFil','cCorte'].forEach(i=>$(i).addEventListener('input',render));
+$('pSoc').addEventListener('input',pInfo);$('pAn').addEventListener('input',pInfo);
+$('pMed').addEventListener('change',()=>$('pEspL').classList.toggle('hide',$('pMed').value!=='En especie'));
+$('pCon').addEventListener('change',()=>{const s=pSocio(),c=(club().cuotas||[]).find(x=>x.n===$('pCon').value);if(s&&$('pCon').value==='Anualidad completa')$('pMon').value=fmt(valorDe(s));else if(c&&s){const tot=cuotasTot()||1;$('pMon').value=fmt(Math.round(c.monto*valorDe(s)/tot))}});
+$('bPag').addEventListener('click',()=>{const m=$('msgPag'),s=pSocio(),mo=num($('pMon').value);m.className='msg err';
+  if(!s){m.textContent='Elige un socio de la lista.';return}if(mo<=0){m.textContent='Escribe el monto.';return}if($('pMed').value==='En especie'&&!$('pEsp').value.trim()){m.textContent='Describe el bien entregado en especie.';return}
+  const p={id:uid(),rec:sigRecibo(),fecha:$('pFec').value||hoy(),num:String(s.num),monto:mo,concepto:$('pCon').value,medio:$('pMed').value,trx:$('pTrx').value.trim(),especie:$('pMed').value==='En especie'?$('pEsp').value.trim():'',anio:+$('pAn').value||club().anio,obs:$('pObs').value.trim()};
+  S.pagos.push(p);S.sigRec=+p.rec.slice(2)+1;guardar();m.className='msg';m.textContent=`Pago guardado con el recibo ${p.rec}.`;['pSoc','pMon','pTrx','pEsp','pObs'].forEach(i=>$(i).value='');render();verRecibo(p)});
+$('fLogo').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const img=new Image(),rd=new FileReader();rd.onload=()=>{img.onload=()=>{const k=Math.min(1,320/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);S.club.logo=c.toDataURL('image/png');guardar();render()};img.src=rd.result};rd.readAsDataURL(f);e.target.value=''});
+$('bLogoX').addEventListener('click',()=>{S.club.logo='';guardar();render()});
+$('bRep').addEventListener('click',()=>imprimir(reporteHTML()));
+$('bResp').addEventListener('click',()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download=`Respaldo_${(club().nombre||'club').replace(/\W+/g,'_')}_${hoy()}.json`;a.click()});
+$('fResp').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.club||!Array.isArray(d.socios))throw 0;S={...ini(),...d,club:{...ini().club,...d.club}};await guardarYa();render();alert('Respaldo restaurado.')}catch(_){alert('Ese archivo no es un respaldo válido del programa de clubes.')}e.target.value=''});
+
+window.addEventListener('pagehide',()=>{if(tGuardar){clearTimeout(tGuardar);guardarYa()}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&tGuardar){clearTimeout(tGuardar);guardarYa()}});
+/* ---------- inicio ---------- */
+(async()=>{try{if(SUPA.url){const u=await iniciarSupa();UID=u.id;const b=document.createElement('button');b.className='btn';b.type='button';b.textContent='🔒 Cerrar sesión';b.title='Sesión de '+u.email;b.onclick=async()=>{await guardarYa();await SB.auth.signOut();location.reload()};$('hBtns').append(b)}
+  const d=await cargar();if(d&&d.club){S={...ini(),...d,club:{...ini().club,...d.club}};S.asis=S.asis||[];S.armas=S.armas||[];S.mov=S.mov||[];if(!S.prods||!S.prods.length)S.prods=prodIni();S.cab=S.cab||{tipo:'club'}}estado('')}catch(e){estado('⚠️ '+(e.message||e))}render()})();
+})();
+</script>
+</body>
+</html>
