@@ -97,7 +97,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 25-11-2026 · 23:30</p>
+  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 26-11-2026 · 00:10</p>
   <p class="sub">Del Registro de Compras y Ventas al libro diario, mayor y balance de comprobación.</p>
   <div id="avisoApp"></div>
   <div class="emp" id="empLine"></div>
@@ -390,6 +390,13 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
     <p class="note" style="margin-top:6px">Manda este enlace solo a los socios de esta empresa. Cada socio crea su cuenta y ve únicamente sus propios gastos.</p>
   </div>
   <div class="panel"><h2>Cuentas para los asientos</h2><div class="grid" id="gsMapa"></div><p class="note">Si la boleta o factura <b>ya está en el registro de compras</b> de la empresa, el asiento carga Proveedores en vez del gasto, para no duplicar el gasto ni el IVA.</p></div>
+  <div class="panel"><h2>Capital de los socios</h2><p class="note" id="gsCapN"></p><div class="scroll"><table class="stack" id="gsCap"></table></div></div>
+  <div class="panel"><h2>Préstamo pagado con cuotas de los socios</h2>
+    <div class="grid" id="prCfg"></div>
+    <div class="kpis" id="prKpi" style="margin-top:10px"></div>
+    <h3 style="margin:14px 0 6px">Pagos al acreedor y saldo del préstamo</h3><div class="scroll"><table class="stack" id="prA"></table></div>
+    <h3 style="margin:14px 0 6px">Cuotas pagadas por cada socio</h3><div class="scroll"><table class="stack" id="prB"></table></div>
+    <p class="note">Se calcula desde la contabilidad: los pagos al acreedor son los cargos a la cuenta del préstamo, y las cuotas de cada socio son los abonos a la cuenta del socio cuya glosa trae su RUT (como en la cartola). Los socios sin RUT no aparecen hasta que completes su RUT en Inicio.</p></div>
   <div class="panel"><h2>Resumen por socio</h2><div class="scroll"><table class="stack" id="gsRes"></table></div></div>
   <div class="panel"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Gastos registrados</h2><select id="gsFil" style="max-width:220px"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="aprobado">Aprobados</option><option value="rechazado">Rechazados</option></select></div>
     <p class="msg" id="gsMsg"></p><div class="scroll"><table class="stack" id="gsTab"></table></div></div>
@@ -782,6 +789,11 @@ async function gsCargar(force){if(!gsOk())return;const emp=rutN(S.emp.rut);if(!f
 function renderGsoc(){const M=gsMapa(),emp=rutN(S.emp.rut);$('gsLink').value=`${location.origin==='null'||location.protocol==='file:'?'https://pmoragacontable-sys.github.io':location.origin+location.pathname.replace(/[^/]*$/,'')}/socios.html?e=${emp}&o=${uid}&n=${encodeURIComponent(S.emp.raz||'')}`.replace(/([^:])\/\//,'$1/');
   $('gsMapa').innerHTML=[['gasto','Gasto (si no está en el registro de compras)'],['prov','Proveedores (si ya está en el registro de compras)'],['don','Donación recibida del socio'],['cxp','Cuenta por pagar al socio (reembolso)'],['apo','Aportes por enterar (capital)']].map(([k,t])=>`<label>${t}<input list="dlPlan" data-gsmap="${k}" value="${esc(M[k])}"><span class="note">${enPlan(M[k])?esc(nom(M[k])):'<b style="color:var(--acc)">Falta elegir una cuenta del plan</b>'}</span></label>`).join('');
   const P={};GS.filter(g=>g.estado==='aprobado').forEach(g=>{const k=g.socio_rut||g.socio_nombre;P[k]=P[k]||{n:g.socio_nombre,r:g.socio_rut,donacion:0,reembolso:0,aporte:0};P[k][g.tratamiento]=(P[k][g.tratamiento]||0)+(+g.total||0)});
+  const SO=socios().filter(x=>!x.rep||+x.cap),mk=x=>rutN(x.r)||norm(x.n),apo={};GS.filter(g=>g.estado==='aprobado'&&g.tratamiento==='aporte').forEach(g=>{const k=rutN(g.socio_rut)||norm(g.socio_nombre);apo[k]=(apo[k]||0)+(+g.total||0)});
+  if(SO.some(x=>+x.cap)){let T=[0,0,0,0];$('gsCapN').textContent=`Capital suscrito y enterado según el traspaso${S.emp.capCorte?' al '+fdm(S.emp.capCorte):''}, más los gastos aprobados como aporte en el portal.`;
+    $('gsCap').innerHTML='<thead><tr><th>Socio</th><th>RUT</th><th class="n">%</th><th class="n">Capital suscrito</th><th class="n">Enterado (traspaso)</th><th class="n">Aportes portal</th><th class="n">Por enterar</th></tr></thead><tbody>'+SO.map(x=>{const c=+x.cap||0,e0=+x.ent||0,a=apo[mk(x)]||0,pe=Math.max(0,c-e0-a);T[0]+=c;T[1]+=e0;T[2]+=a;T[3]+=pe;return`<tr><td>${esc(x.n)}</td><td>${esc(x.r)||'<span class="note">sin RUT</span>'}</td><td class="n">${String(x.p).replace('.',',')}</td><td class="n">${fmt(c)}</td><td class="n">${fmt(e0)}</td><td class="n">${fmt(a)}</td><td class="n"${pe?' style="color:var(--acc);font-weight:700"':''}>${fmt(pe)}</td></tr>`}).join('')+`<tr class="tot"><td colspan="3">Total</td><td class="n">${fmt(T[0])}</td><td class="n">${fmt(T[1])}</td><td class="n">${fmt(T[2])}</td><td class="n">${fmt(T[3])}</td></tr></tbody>`}
+  else{$('gsCapN').textContent='Registra los socios con su % en Inicio (datos de la empresa) para ver aquí su capital.';$('gsCap').innerHTML=''}
+  renderPrest();
   const pend=GS.filter(g=>g.estado==='pendiente');
   $('gsRes').innerHTML='<thead><tr><th>Socio</th><th>RUT</th><th class="n">Donación</th><th class="n">Por cobrar</th><th class="n">Aporte</th><th class="n">Total aprobado</th></tr></thead><tbody>'+(Object.values(P).map(x=>`<tr><td>${esc(x.n)}</td><td>${esc(x.r)}</td><td class="n">${fmt(x.donacion)}</td><td class="n">${fmt(x.reembolso)}</td><td class="n">${fmt(x.aporte)}</td><td class="n"><b>${fmt(x.donacion+x.reembolso+x.aporte)}</b></td></tr>`).join('')||'<tr><td colspan="6">Todavía no hay gastos aprobados.</td></tr>')+'</tbody>';
   const f=$('gsFil').value,L=GS.filter(g=>!f||g.estado===f);if(!$('gsMsg').classList.contains('err'))$('gsMsg').textContent=pend.length?`${pend.length} gasto${pend.length>1?'s':''} pendiente${pend.length>1?'s':''} de revisión.`:'';
@@ -791,6 +803,20 @@ function renderGsoc(){const M=gsMapa(),emp=rutN(S.emp.rut);$('gsLink').value=`${
     <td><input list="dlPlan" data-gs="${g.id}|cuenta_gasto" value="${esc(g.cuenta_gasto||'')}" placeholder="${esc(M.gasto)}" ${ap||g.en_rcv?'disabled':''} style="max-width:120px"></td>
     <td><span class="tag">${esc(g.estado)}</span></td>
     <td style="white-space:nowrap">${ap?`<button class="btn alt" type="button" data-gsact="anular|${g.id}">Anular aprobación</button>`:`<button class="btn acc" type="button" data-gsact="aprobar|${g.id}">Aprobar</button> ${g.estado==='rechazado'?'':`<button class="btn alt" type="button" data-gsact="rechazar|${g.id}">Rechazar</button>`}`}</td></tr>`}).join('')||'<tr><td colspan="10">No hay gastos registrados por los socios de esta empresa.</td></tr>')+'</tbody>'}
+function renderPrest(){const P=S.emp.prest=S.emp.prest||{},y=+S.emp.per,MS='Ene;Feb;Mar;Abr;May;Jun;Jul;Ago;Sep;Oct;Nov;Dic'.split(';');
+  const F=[['acr','Acreedor','text'],['monto','Monto del préstamo','num'],['fecha','Fecha en que se recibió','date'],['cuota','Cuota mensual por socio','num'],['n','N° de cuotas','num'],['cta','Cuenta del préstamo','cta'],['ctaS','Cuenta por cobrar a socios','cta']];
+  $('prCfg').innerHTML=F.map(([k,t,ty])=>`<label>${t}<input data-pr="${k}" ${ty==='date'?'type="date"':ty==='cta'?'list="dlPlan"':ty==='num'?'inputmode="numeric"':''} value="${esc(ty==='num'&&P[k]?fmt(P[k]):P[k]||'')}">${ty==='cta'?`<span class="note">${esc(enPlan(P[k])?nom(P[k]):'')}</span>`:''}</label>`).join('');
+  if(!P.monto||!enPlan(P.cta)){$('prKpi').innerHTML='';$('prA').innerHTML='<tbody><tr><td>Completa el monto y la cuenta del préstamo para ver el control.</td></tr></tbody>';$('prB').innerHTML='';return}
+  const L=asientos(y,false),pag=Array(12).fill(0),cuo={};let antes=0;
+  for(let yy=+(P.fecha||String(y)).slice(0,4);yy<y;yy++)asientos(yy,false).forEach(l=>{if(l.c===P.cta)antes+=l.d})
+  const SO=socios().filter(x=>!x.rep||+x.cap||+x.p);
+  L.forEach(l=>{const m=+String(l.f).slice(5,7)-1;if(l.c===P.cta&&l.d)pag[m]+=l.d;if(l.c===P.ctaS&&l.h){const g=String(l.g||'').toUpperCase().replace(/[.\-\s]/g,'');const so=SO.find(x=>rutN(x.r).length>6&&g.includes(rutN(x.r)));const k=so?so.n:'(sin identificar)';(cuo[k]=cuo[k]||Array(12).fill(0))[m]+=l.h}});
+  let sal=(+P.monto)-antes;const salM=pag.map(v=>sal-=v),tp=pag.reduce((a,b)=>a+b,0),porSoc=(+P.cuota||0)*(+P.n||0);
+  $('prA').innerHTML=`<thead><tr><th>Concepto</th>${MS.map(m=>`<th class="n">${m}</th>`).join('')}<th class="n">Total ${y}</th></tr></thead><tbody><tr><td>Cuotas pagadas a ${esc(P.acr||'el acreedor')}</td>${pag.map(v=>`<td class="n">${fmt(v)}</td>`).join('')}<td class="n"><b>${fmt(tp)}</b></td></tr><tr><td>Saldo del préstamo</td>${salM.map(v=>`<td class="n">${fmt(v)}</td>`).join('')}<td></td></tr></tbody>`;
+  const filas=SO.map(x=>({n:x.n,r:x.r,m:cuo[x.n]||Array(12).fill(0)}));if(cuo['(sin identificar)'])filas.push({n:'(sin identificar)',r:'',m:cuo['(sin identificar)']});let tt=0;
+  $('prB').innerHTML=`<thead><tr><th>Socio</th>${MS.map(m=>`<th class="n">${m}</th>`).join('')}<th class="n">Pagado</th><th class="n">Por pagar</th></tr></thead><tbody>`+filas.map(f=>{const t=f.m.reduce((a,b)=>a+b,0);tt+=t;return`<tr><td>${esc(f.n)}${f.r?'':' <span class="note">(sin RUT)</span>'}</td>${f.m.map(v=>`<td class="n">${v?fmt(v):''}</td>`).join('')}<td class="n">${fmt(t)}</td><td class="n">${f.n==='(sin identificar)'?'':fmt(Math.max(0,porSoc-t))}</td></tr>`}).join('')+`<tr class="tot"><td>Total</td><td colspan="12"></td><td class="n">${fmt(tt)}</td><td></td></tr></tbody>`;
+  $('prKpi').innerHTML=[['Monto del préstamo',+P.monto],['Pagado al acreedor',antes+tp],['Saldo por pagar',(+P.monto)-antes-tp],['Cuotas recibidas de socios',tt]].map(([l,v])=>`<div class="kpi"><span>${l}</span><strong>${fmt(v)}</strong></div>`).join('')}
+document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.pr;if(!k)return;const P=S.emp.prest=S.emp.prest||{};P[k]=['monto','cuota','n'].includes(k)?num(e.target.value):e.target.value.trim();save();renderPrest()});
 async function gsUpd(id,ch){const{error}=await SB.from('gastos_socios').update(ch).eq('id',id).eq('owner',uid);if(error){$('gsMsg').className='msg err';$('gsMsg').textContent='No se pudo guardar: '+error.message;return false}Object.assign(GS.find(g=>g.id===id)||{},ch);return true}
 async function gsAccion(acc,id){const g=GS.find(x=>x.id===id);if(!g)return;const M=gsMapa(),m=$('gsMsg');m.className='msg';
   if(acc==='rechazar'){if(await gsUpd(id,{estado:'rechazado'}))renderGsoc();return}
