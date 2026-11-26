@@ -97,7 +97,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 26-11-2026 · 20:15</p>
+  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 26-11-2026 · 21:40</p>
   <p class="sub">Del Registro de Compras y Ventas al libro diario, mayor y balance de comprobación.</p>
   <div id="avisoApp"></div>
   <div class="emp" id="empLine"></div>
@@ -903,7 +903,7 @@ function toDocs(rows,forz){
   if(kind==='compras_o_ventas')kind=h.some(x=>x.includes('cliente'))?'ventas':null;
   if(!kind)throw new Error('No reconozco si es libro de compras o de ventas. Elige el tipo de libro arriba del botón y vuelve a subirlo.');
   if(h.some(x=>x.startsWith('fechareclamo')))throw new Error('Este archivo es el de documentos RECLAMADOS (rechazados) del Registro de Compras y Ventas. No se carga: un documento reclamado no es compra ni venta válida y no da derecho a crédito fiscal. Descarga del SII el archivo de la pestaña «Registro».');
-  const estC=h.findIndex(x=>/^estado/.test(x));const fi=h.indexOf('folio')>=0?h.indexOf('folio'):h.findIndex(x=>x!=='nro'&&isF(x))>=0?h.findIndex(x=>x!=='nro'&&isF(x)):h.findIndex(isF);
+  const estC=kind==='compras'?h.findIndex(x=>/^estado/.test(x)):-1;const fi=h.indexOf('folio')>=0?h.indexOf('folio'):h.findIndex(x=>x!=='nro'&&isF(x))>=0?h.findIndex(x=>x!=='nro'&&isF(x)):h.findIndex(isF);
   const c={tipo:col('tipodoc','tipodocumento','tipodte','tipo','td','coddoc','codigo'),rut:col('rutproveedor','rutcliente','rutemisor','rutreceptor','rut'),raz:col('razonsocial','nombre','proveedor','cliente'),folio:fi,fecha:col('fechadocto','fechadocumento','fechaemision','fecha'),ex:col('montoexento','exento','exentos'),neto:col('montoneto','neto','afecto','montoafecto'),
     iva:kind==='ventas'?col('montoiva','iva','ivadebito','ivadebitofiscal'):col('montoivarecuperable','ivarecuperable','ivacredito','ivacreditofiscal','montoiva','iva'),ivaNR:col('montoivanorecuperable','ivanorecuperable','ivanorec'),ivaUC:col('montoivausocomun','ivausocomun'),netoAF:col('montonetoactivofijo','netoactivofijo'),total:col('montototal','total'),oic:col('codigootroimpuesto','codigootroimp','codotroimp'),oiv:col('valorotroimpuesto','valorotroimp','montootroimpuesto','montootroimp'),sdc:col('imptosinderechoacredito','impuestosinderechoacredito')};
   const g=(r,i)=>i>=0?r[i]:'';
