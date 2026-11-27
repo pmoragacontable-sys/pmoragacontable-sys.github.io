@@ -97,7 +97,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 10:00</p>
+  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 17:30</p>
   <p class="sub">Del Registro de Compras y Ventas al libro diario, mayor y balance de comprobación.</p>
   <div id="avisoApp"></div>
   <div class="emp" id="empLine"></div>
@@ -326,7 +326,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
   </div>
   <div class="panel"><h2 id="hAList">Asientos manuales del año</h2><div class="scroll"><table class="stack" id="tAList"></table></div></div>
 </section>
-<section data-v="diario" class="hide"><div class="panel"><h2>Libro diario</h2><label class="row" style="color:var(--ink);margin-bottom:10px"><input type="checkbox" id="chkCierre" style="width:22px;min-height:22px;margin:0"> Incluir asientos de cierre al 31 de diciembre</label><div class="row" style="margin-bottom:10px"><label style="max-width:260px">Tipo de comprobante<select id="diaTipo"><option value="">Todos</option><option value="I">Ingresos</option><option value="E">Egresos</option><option value="T">Traspasos</option></select></label></div><div class="kpis" id="diaKpi"></div><p class="note">El asiento de apertura se genera solo, con los saldos del cierre del año anterior.</p><div class="scroll"><table class="stack" id="tDia"></table></div></div></section>
+<section data-v="diario" class="hide"><div class="panel"><h2>Libro diario</h2><label class="row" style="color:var(--ink);margin-bottom:10px"><input type="checkbox" id="chkCierre" style="width:22px;min-height:22px;margin:0"> Incluir asientos de cierre al 31 de diciembre</label><div class="row" style="margin-bottom:10px"><label style="max-width:260px">Tipo de comprobante<select id="diaTipo"><option value="">Todos</option><option value="I">Ingresos</option><option value="E">Egresos</option><option value="T">Traspasos</option></select></label></div><div class="kpis" id="diaKpi"></div><p class="note">El asiento de apertura se genera solo, con los saldos del cierre del año anterior. Para corregir un asiento, usa el botón de su fila.</p><div id="msgDia" class="msg"></div><div class="scroll"><table class="stack" id="tDia"></table></div></div></section>
 
 <section data-v="mayor" class="hide"><div class="panel"><h2>Libro mayor</h2>
   <select id="selCta" style="max-width:420px"></select>
@@ -948,7 +948,7 @@ function apertura(y,n){if(y<=2016||!hayHasta(y-1))return[];const f=fin(y-1),g=`A
 const ANT_CS=['17','18','19'],antDe=d=>d.oi&&ANT_CS.includes(String(d.oic||'').replace(/^0+/,''))?d.oi:0;
 function movs(y,n0){const L=[];
   const docs=[...Y('ventas',y).map(d=>({...d,k:'V'})),...Y('compras',y).map(d=>({...d,k:'C'})),...(S.manual||[]).filter(m=>m.fecha.slice(0,4)===String(y)).map(m=>({...m,k:'A'})),...(S.banco||[]).filter(b=>b.fecha.slice(0,4)===String(y)&&(b.m||b.c||b.liq)).map(b=>({...b,k:'B'})),...asientosAux(String(y))].sort((a,b)=>a.fecha<b.fecha?-1:a.fecha>b.fecha?1:a.k<b.k?-1:1);
-  docs.forEach((d,i)=>{const n=n0+i;if(d.k==='X'){d.lineas.forEach(l=>{if(Math.round(l.d)||Math.round(l.h))L.push({n,f:d.fecha,c:l.c,g:d.glosa,t:'M',d:l.d,h:l.h})});return}if(d.k==='B'){const a=d.abono||0,cg=d.cargo||0,amt=a||cg,push=(c,dd,hh,g)=>L.push({n,f:d.fecha,c,g,t:'M',d:dd,h:hh});
+  const proc=(d,i)=>{const n=n0+i;if(d.k==='X'){d.lineas.forEach(l=>{if(Math.round(l.d)||Math.round(l.h))L.push({n,f:d.fecha,c:l.c,g:d.glosa,t:'M',d:l.d,h:l.h})});return}if(d.k==='B'){const a=d.abono||0,cg=d.cargo||0,amt=a||cg,push=(c,dd,hh,g)=>L.push({n,f:d.fecha,c,g,t:'M',d:dd,h:hh});
       if(d.liq){const q=d.liq,com=q.bruto-a,g=`Liquidación ${q.app||'tarjetas'} · ventas ${fmt(q.bruto)} · comisión ${fmt(com)}`;push(d.cta,a,0,g);if(com>0)push(q.fac?(q.prov||S.map.proveedores):ctaComision(q.app),com,0,g);push(q.cta||S.map.vouchers||S.map.clientes,0,q.bruto,g);return}
       if(d.m){const doc=docPorKey(d.m);const g=doc?`${a?'Cobro':'Pago'} ${TIPOS[doc.tipo]||doc.tipo} N°${doc.folio} ${doc.raz}`:d.desc;if(d.m[0]==='V'){push(d.cta,amt,0,g);push(S.map.clientes,0,amt,g)}else{push(S.map.proveedores,amt,0,g);push(d.cta,0,amt,g)}}
       else{if(a){push(d.cta,a,0,d.desc);push(d.c,0,a,d.desc)}else{push(d.c,cg,0,d.desc);push(d.cta,0,cg,d.desc)}}return}
@@ -956,7 +956,8 @@ function movs(y,n0){const L=[];
     const add=(c,amt,lado)=>{const a=amt*d.s;if(!Math.round(a))return;const side=a<0?(lado==='D'?'H':'D'):lado;L.push({n,f:d.fecha,c,g:gl,t:'M',d:side==='D'?Math.abs(a):0,h:side==='H'?Math.abs(a):0})};
     const M=S.map;
     if(d.k==='V'){add([35,38,39,41].includes(d.tipo)?(M.boletas||M.clientes):d.tipo===48?(M.vouchers||M.clientes):M.clientes,d.total,'D');add(M.ventas,d.total-d.iva-d.ex,'H');add(M.ventasEx,d.ex,'H');add(M.ivaDF,d.iva,'H')}
-    else{const an=antDe(d);add(S.prov[d.rut]||M.compras,d.total-d.iva-d.netoAF-an,'D');add(M.activoFijo,d.netoAF,'D');add(M.ivaCF,d.iva,'D');add(rc('antCS')||M.ivaCF,an,'D');add(M.proveedores,d.total,'H')}});
+    else{const an=antDe(d);add(S.prov[d.rut]||M.compras,d.total-d.iva-d.netoAF-an,'D');add(M.activoFijo,d.netoAF,'D');add(M.ivaCF,d.iva,'D');add(rc('antCS')||M.ivaCF,an,'D');add(M.proveedores,d.total,'H')}};
+  docs.forEach((d,i)=>{const st=L.length;proc(d,i);const o=d.k==='A'?'A|'+d.id:d.k==='V'||d.k==='C'?d.k+'|'+(TIPOS[d.tipo]||'Doc '+d.tipo)+' N°'+d.folio+(d.raz?' '+d.raz:''):d.k==='X'?'X|'+d.glosa:d.k;for(let j=st;j<L.length;j++)L[j].o=o});
   return L}
 function cierre(L,y){const m=saldos(L),f=`${y}-12-31`,out=[];let n=Math.max(0,...L.map(l=>l.n))+1,res=0;
   const ln=(c,v,g)=>{if(Math.round(v))out.push({n,f,c,g,t:'C',d:v<0?-v:0,h:v>0?v:0})};/* v = saldo a cancelar */
@@ -1062,7 +1063,7 @@ function render(){aplicarIVA();for(const k in memo)delete memo[k];for(const k in
   if(tab==='bib'){renderBib();if(!$('cHonY').value)$('cHonY').value=e.per;calcs()}
   if(tab==='diario'){$('chkCierre').checked=conCierre(+e.per);let last=0;const K=clasificar(L),ft=S.diaTipo||'',LF=L.filter(l=>!ft||K[l.n].t===ft),DF=sum(LF,'d'),HF=sum(LF,'h');$('diaTipo').value=ft;
     const cn={I:0,E:0,T:0};Object.values(K).forEach(k=>cn[k.t]++);$('diaKpi').innerHTML=`<div class="kpi"><span>Comprobantes de ingreso</span><strong>${cn.I}</strong></div><div class="kpi"><span>Comprobantes de egreso</span><strong>${cn.E}</strong></div><div class="kpi"><span>Comprobantes de traspaso</span><strong>${cn.T}</strong></div>`;
-    $('tDia').innerHTML=LF.length?`<thead><tr><th>N°</th><th>Comprobante</th><th>Fecha</th><th>Cuenta</th><th>Nombre</th><th>Glosa</th><th class="n">Debe</th><th class="n">Haber</th></tr></thead><tbody>`+LF.map(l=>{const s=l.n!==last;last=l.n;const k=K[l.n];return`<tr class="${s?'sep':''}"><td>${s?l.n:''}</td><td>${s?`<b>${TIPOC[k.t]}</b> ${k.num}`:''}</td><td>${s?l.f:''}</td><td>${esc(l.c)}</td><td>${esc(nom(l.c))}</td><td>${s?esc(l.g):''}</td><td class="n">${l.d?fmt(l.d):''}</td><td class="n">${l.h?fmt(l.h):''}</td></tr>`}).join('')+`<tr class="tot"><td colspan="6">Totales${ft?' '+TIPOC[ft].toLowerCase()+'s':''}</td><td class="n">${fmt(DF)}</td><td class="n">${fmt(HF)}</td></tr></tbody>`:'<tr><td>Sin asientos para este filtro.</td></tr>'}
+    $('tDia').innerHTML=LF.length?`<thead><tr><th>N°</th><th>Comprobante</th><th>Fecha</th><th>Cuenta</th><th>Nombre</th><th>Glosa</th><th class="n">Debe</th><th class="n">Haber</th><th></th></tr></thead><tbody>`+LF.map(l=>{const s=l.n!==last;last=l.n;const k=K[l.n];return`<tr class="${s?'sep':''}"><td>${s?l.n:''}</td><td>${s?`<b>${TIPOC[k.t]}</b> ${k.num}`:''}</td><td>${s?l.f:''}</td><td>${esc(l.c)}</td><td>${esc(nom(l.c))}</td><td>${s?esc(l.g):''}</td><td class="n">${l.d?fmt(l.d):''}</td><td class="n">${l.h?fmt(l.h):''}</td><td>${s&&l.o?`<button class="btn alt" data-dedit="${esc(l.o)}" style="min-height:30px;padding:2px 10px">${l.o[0]==='A'?'Editar':'Corregir'}</button>`:''}</td></tr>`}).join('')+`<tr class="tot"><td colspan="6">Totales${ft?' '+TIPOC[ft].toLowerCase()+'s':''}</td><td class="n">${fmt(DF)}</td><td class="n">${fmt(HF)}</td></tr></tbody>`:'<tr><td>Sin asientos para este filtro.</td></tr>'}
   if(tab==='mayor'){const M=mayor(L),sel=$('selCta'),cur=sel.value;sel.innerHTML='<option value="">Todas las cuentas</option>'+M.map(m=>`<option value="${esc(m.c)}">${esc(m.c+' '+m.n)}</option>`).join('');sel.value=M.some(m=>m.c===cur)?cur:'';
     const show=M.filter(m=>!sel.value||m.c===sel.value);
     $('tMay').innerHTML=show.length?`<thead><tr><th>Fecha</th><th>N°</th><th>Glosa</th><th class="n">Debe</th><th class="n">Haber</th><th class="n">Saldo</th></tr></thead><tbody>`+show.map(m=>{let s=0;return`<tr class="sep"><td colspan="6"><b>${esc(m.c)} ${esc(m.n)}</b></td></tr>`+m.L.map(l=>{s+=l.d-l.h;return`<tr><td>${l.f}</td><td>${l.n}</td><td>${esc(l.g)}</td><td class="n">${l.d?fmt(l.d):''}</td><td class="n">${l.h?fmt(l.h):''}</td><td class="n">${fmt(s)}</td></tr>`}).join('')+`<tr class="tot"><td colspan="3">Total ${esc(m.c)}</td><td class="n">${fmt(m.d)}</td><td class="n">${fmt(m.h)}</td><td class="n">${fmt(m.d-m.h)}</td></tr>`}).join('')+'</tbody>':'<tr><td>Sin movimientos.</td></tr>'}
@@ -1201,6 +1202,16 @@ $('cenOk').addEventListener('click',()=>{if(!CEN||CEN.err)return;const pers=Obje
     S.manual.push({id:Date.now()+'-c'+i,cen:true,fecha,glosa:`Centralización contabilidad acumulada ${MESES[mm-1]} ${yy}`,lineas})});
   const y0=pers[0].slice(0,4);S.emp.per=y0;CEN=null;$('cenTxt').value='';$('tCen').innerHTML='';$('cenOk').classList.add('hide');$('cenMsg').className='msg';$('cenMsg').textContent=`Listo: ${pers.length} asiento(s) de centralización creados. Puedes revisarlos, editarlos o quitarlos en la lista de asientos manuales.`;aviso('Contabilidad centralizada cargada.',true);save();render()});
 $('aCancel').addEventListener('click',()=>{modoEdicion(null);$('aGlo').value='';$('msgA').textContent='';cargarPlantilla()});
+function editarAsiento(id){const m=(S.manual||[]).find(z=>z.id===id);if(!m)return false;ML=m.lineas.map(l=>({c:l.c,d:l.d||0,h:l.h||0}));$('aFec').value=m.fecha;$('aGlo').value=m.glosa;$('msgA').textContent='';modoEdicion(m);renderLin();$('aTit').scrollIntoView({behavior:'smooth',block:'start'});return true}
+$('tDia').addEventListener('click',e=>{const b=e.target.closest('[data-dedit]');if(!b)return;const o=b.dataset.dedit,t=o[0],det=o.slice(2),msg=$('msgDia');msg.className='msg';
+  const ir=v=>{const x=document.querySelector(`#tabs [data-t="${v}"]`);if(x)x.click()};
+  if(t==='A'){ir('manual');setTimeout(()=>{if(!editarAsiento(det)){msg.textContent='No encontré ese asiento.'}},60);return}
+  let txt;if(t==='V'||t==='C')txt=`Este asiento se arma solo desde el documento ${det} del Libro de ${t==='V'?'ventas':'compras'}. Para corregirlo, corrige el documento o la cuenta asignada en "Libro compras y ventas". Si el documento está bien y solo quieres reclasificar, haz un asiento manual de ajuste.`;
+  else if(t==='B')txt='Este asiento viene de la cartola bancaria. Para corregirlo, cambia la cuenta o la conciliación de ese movimiento en "Bancos".';
+  else if(/^Centralización remuneraciones/.test(det))txt='Este asiento se arma solo desde "Remuneraciones". Corrige ahí la planilla de ese mes y el asiento se actualiza.';
+  else if(/^Boleta honorarios/.test(det))txt='Este asiento se arma solo desde "Honorarios". Corrige ahí la boleta y el asiento se actualiza.';
+  else txt=`Este asiento (${det}) lo genera el programa automáticamente desde Activo fijo, la corrección monetaria o la centralización del F29. Corrige el dato en esa sección y el asiento se actualiza solo.`;
+  msg.textContent=txt;msg.scrollIntoView({behavior:'smooth',block:'center'})});
 $('tAList').addEventListener('click',e=>{const ed=e.target.closest('[data-aedit]');if(ed){const m=(S.manual||[]).find(z=>z.id===ed.dataset.aedit);if(!m)return;ML=m.lineas.map(l=>({c:l.c,d:l.d||0,h:l.h||0}));$('aFec').value=m.fecha;$('aGlo').value=m.glosa;$('msgA').textContent='';modoEdicion(m);renderLin();$('aTit').scrollIntoView({behavior:'smooth',block:'start'});return}
   const b=e.target.closest('[data-adel]');if(!b)return;if(aEdit===b.dataset.adel&&b.dataset.arm==='1')modoEdicion(null);if(b.dataset.arm!=='1'){b.dataset.arm='1';b.textContent='¿Seguro?';setTimeout(()=>{b.dataset.arm='';b.textContent='Quitar'},3000);return}S.manual=S.manual.filter(x=>x.id!==b.dataset.adel);save();render()});
 
