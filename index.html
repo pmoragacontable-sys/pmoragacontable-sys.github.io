@@ -97,7 +97,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 17:30</p>
+  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 18:30</p>
   <p class="sub">Del Registro de Compras y Ventas al libro diario, mayor y balance de comprobación.</p>
   <div id="avisoApp"></div>
   <div class="emp" id="empLine"></div>
@@ -294,6 +294,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
   <div class="panel">
     <h2 id="aTit">Nuevo asiento</h2><p class="msg" id="aEditNota" style="display:none;margin:0 0 8px"></p>
     <p class="note">Para la apertura o el aporte de capital, las remuneraciones, los arriendos sin factura y cualquier otro asiento. Elige una plantilla y completa los montos.</p>
+    <div class="row" style="align-items:flex-end;gap:8px;margin:6px 0 12px;padding:10px;border:1px dashed var(--line,#ccc);border-radius:10px"><label style="max-width:300px;margin:0">Corregir un asiento existente: N° del Libro diario o comprobante<input id="aBusN" placeholder="Ej.: 15 o T-3"></label><button class="btn" id="aBusB" type="button">Traer asiento</button></div><p class="msg" id="aBusMsg" style="margin:-6px 0 10px"></p>
     <div class="grid">
       <label>Plantilla<select id="aPla"><option value="libre">Asiento libre</option><option value="apertura">Apertura / aporte de capital</option><option value="rem">Remuneraciones del mes</option><option value="arr">Arriendo pagado</option></select></label>
       <label>Fecha<input id="aFec" type="date"></label>
@@ -946,6 +947,7 @@ function fin(y){/* saldos de balance al cierre de y, con el resultado traspasado
 function apertura(y,n){if(y<=2016||!hayHasta(y-1))return[];const f=fin(y-1),g=`Asiento de apertura año ${y}`;
   return Object.keys(f).sort().map(c=>({n,f:`${y}-01-01`,c,g,t:'A',d:f[c]>0?f[c]:0,h:f[c]<0?-f[c]:0}))}
 const ANT_CS=['17','18','19'],antDe=d=>d.oi&&ANT_CS.includes(String(d.oic||'').replace(/^0+/,''))?d.oi:0;
+function reempKey(d){if(d.k==='V'||d.k==='C')return d.k+'|'+d.tipo+'|'+(d.rut||'')+'|'+d.folio+'|'+(d.per||'');if(d.k==='X')return 'X|'+d.fecha+'|'+d.glosa;if(d.k==='B')return 'B|'+d.fecha+'|'+(d.desc||'')+'|'+(d.abono||0)+'|'+(d.cargo||0);return ''}
 function movs(y,n0){const L=[];
   const docs=[...Y('ventas',y).map(d=>({...d,k:'V'})),...Y('compras',y).map(d=>({...d,k:'C'})),...(S.manual||[]).filter(m=>m.fecha.slice(0,4)===String(y)).map(m=>({...m,k:'A'})),...(S.banco||[]).filter(b=>b.fecha.slice(0,4)===String(y)&&(b.m||b.c||b.liq)).map(b=>({...b,k:'B'})),...asientosAux(String(y))].sort((a,b)=>a.fecha<b.fecha?-1:a.fecha>b.fecha?1:a.k<b.k?-1:1);
   const proc=(d,i)=>{const n=n0+i;if(d.k==='X'){d.lineas.forEach(l=>{if(Math.round(l.d)||Math.round(l.h))L.push({n,f:d.fecha,c:l.c,g:d.glosa,t:'M',d:l.d,h:l.h})});return}if(d.k==='B'){const a=d.abono||0,cg=d.cargo||0,amt=a||cg,push=(c,dd,hh,g)=>L.push({n,f:d.fecha,c,g,t:'M',d:dd,h:hh});
@@ -957,7 +959,8 @@ function movs(y,n0){const L=[];
     const M=S.map;
     if(d.k==='V'){add([35,38,39,41].includes(d.tipo)?(M.boletas||M.clientes):d.tipo===48?(M.vouchers||M.clientes):M.clientes,d.total,'D');add(M.ventas,d.total-d.iva-d.ex,'H');add(M.ventasEx,d.ex,'H');add(M.ivaDF,d.iva,'H')}
     else{const an=antDe(d);add(S.prov[d.rut]||M.compras,d.total-d.iva-d.netoAF-an,'D');add(M.activoFijo,d.netoAF,'D');add(M.ivaCF,d.iva,'D');add(rc('antCS')||M.ivaCF,an,'D');add(M.proveedores,d.total,'H')}};
-  docs.forEach((d,i)=>{const st=L.length;proc(d,i);const o=d.k==='A'?'A|'+d.id:d.k==='V'||d.k==='C'?d.k+'|'+(TIPOS[d.tipo]||'Doc '+d.tipo)+' N°'+d.folio+(d.raz?' '+d.raz:''):d.k==='X'?'X|'+d.glosa:d.k;for(let j=st;j<L.length;j++)L[j].o=o});
+  const RE=S.reemp||{};
+  docs.forEach((d,i)=>{const rk=reempKey(d),st=L.length,rp=rk&&RE[rk];if(rp){rp.lineas.forEach(l=>{if(Math.round(l.d)||Math.round(l.h))L.push({n:n0+i,f:rp.fecha,c:l.c,g:rp.glosa,t:'M',d:+l.d||0,h:+l.h||0,o:'R|'+rk})});return}proc(d,i);if(rk)for(let j=st;j<L.length;j++)L[j].rk=rk;const o=d.k==='A'?'A|'+d.id:d.k==='V'||d.k==='C'?d.k+'|'+(TIPOS[d.tipo]||'Doc '+d.tipo)+' N°'+d.folio+(d.raz?' '+d.raz:''):d.k==='X'?'X|'+d.glosa:d.k;for(let j=st;j<L.length;j++)L[j].o=o});
   return L}
 function cierre(L,y){const m=saldos(L),f=`${y}-12-31`,out=[];let n=Math.max(0,...L.map(l=>l.n))+1,res=0;
   const ln=(c,v,g)=>{if(Math.round(v))out.push({n,f,c,g,t:'C',d:v<0?-v:0,h:v>0?v:0})};/* v = saldo a cancelar */
@@ -1063,7 +1066,7 @@ function render(){aplicarIVA();for(const k in memo)delete memo[k];for(const k in
   if(tab==='bib'){renderBib();if(!$('cHonY').value)$('cHonY').value=e.per;calcs()}
   if(tab==='diario'){$('chkCierre').checked=conCierre(+e.per);let last=0;const K=clasificar(L),ft=S.diaTipo||'',LF=L.filter(l=>!ft||K[l.n].t===ft),DF=sum(LF,'d'),HF=sum(LF,'h');$('diaTipo').value=ft;
     const cn={I:0,E:0,T:0};Object.values(K).forEach(k=>cn[k.t]++);$('diaKpi').innerHTML=`<div class="kpi"><span>Comprobantes de ingreso</span><strong>${cn.I}</strong></div><div class="kpi"><span>Comprobantes de egreso</span><strong>${cn.E}</strong></div><div class="kpi"><span>Comprobantes de traspaso</span><strong>${cn.T}</strong></div>`;
-    $('tDia').innerHTML=LF.length?`<thead><tr><th>N°</th><th>Comprobante</th><th>Fecha</th><th>Cuenta</th><th>Nombre</th><th>Glosa</th><th class="n">Debe</th><th class="n">Haber</th><th></th></tr></thead><tbody>`+LF.map(l=>{const s=l.n!==last;last=l.n;const k=K[l.n];return`<tr class="${s?'sep':''}"><td>${s?l.n:''}</td><td>${s?`<b>${TIPOC[k.t]}</b> ${k.num}`:''}</td><td>${s?l.f:''}</td><td>${esc(l.c)}</td><td>${esc(nom(l.c))}</td><td>${s?esc(l.g):''}</td><td class="n">${l.d?fmt(l.d):''}</td><td class="n">${l.h?fmt(l.h):''}</td><td>${s&&l.o?`<button class="btn alt" data-dedit="${esc(l.o)}" style="min-height:30px;padding:2px 10px">${l.o[0]==='A'?'Editar':'Corregir'}</button>`:''}</td></tr>`}).join('')+`<tr class="tot"><td colspan="6">Totales${ft?' '+TIPOC[ft].toLowerCase()+'s':''}</td><td class="n">${fmt(DF)}</td><td class="n">${fmt(HF)}</td></tr></tbody>`:'<tr><td>Sin asientos para este filtro.</td></tr>'}
+    $('tDia').innerHTML=LF.length?`<thead><tr><th>N°</th><th>Comprobante</th><th>Fecha</th><th>Cuenta</th><th>Nombre</th><th>Glosa</th><th class="n">Debe</th><th class="n">Haber</th><th></th></tr></thead><tbody>`+LF.map(l=>{const s=l.n!==last;last=l.n;const k=K[l.n];return`<tr class="${s?'sep':''}"><td>${s?l.n:''}</td><td>${s?`<b>${TIPOC[k.t]}</b> ${k.num}`:''}</td><td>${s?l.f:''}</td><td>${esc(l.c)}</td><td>${esc(nom(l.c))}</td><td>${s?esc(l.g):''}</td><td class="n">${l.d?fmt(l.d):''}</td><td class="n">${l.h?fmt(l.h):''}</td><td>${s&&l.o?`<button class="btn alt" data-dedit="${esc(l.o)}" data-rk="${esc(l.rk||'')}" style="min-height:30px;padding:2px 10px">${l.o[0]==='A'||l.o[0]==='R'?'Editar':'Corregir'}</button>`+(l.o[0]==='R'?`<div class="note" style="margin-top:4px">Corregido a mano · <a href="#" data-dvolver="${esc(l.o.slice(2))}">volver al automático</a></div>`:''):''}</td></tr>`}).join('')+`<tr class="tot"><td colspan="6">Totales${ft?' '+TIPOC[ft].toLowerCase()+'s':''}</td><td class="n">${fmt(DF)}</td><td class="n">${fmt(HF)}</td></tr></tbody>`:'<tr><td>Sin asientos para este filtro.</td></tr>'}
   if(tab==='mayor'){const M=mayor(L),sel=$('selCta'),cur=sel.value;sel.innerHTML='<option value="">Todas las cuentas</option>'+M.map(m=>`<option value="${esc(m.c)}">${esc(m.c+' '+m.n)}</option>`).join('');sel.value=M.some(m=>m.c===cur)?cur:'';
     const show=M.filter(m=>!sel.value||m.c===sel.value);
     $('tMay').innerHTML=show.length?`<thead><tr><th>Fecha</th><th>N°</th><th>Glosa</th><th class="n">Debe</th><th class="n">Haber</th><th class="n">Saldo</th></tr></thead><tbody>`+show.map(m=>{let s=0;return`<tr class="sep"><td colspan="6"><b>${esc(m.c)} ${esc(m.n)}</b></td></tr>`+m.L.map(l=>{s+=l.d-l.h;return`<tr><td>${l.f}</td><td>${l.n}</td><td>${esc(l.g)}</td><td class="n">${l.d?fmt(l.d):''}</td><td class="n">${l.h?fmt(l.h):''}</td><td class="n">${fmt(s)}</td></tr>`}).join('')+`<tr class="tot"><td colspan="3">Total ${esc(m.c)}</td><td class="n">${fmt(m.d)}</td><td class="n">${fmt(m.h)}</td><td class="n">${fmt(m.d-m.h)}</td></tr>`}).join('')+'</tbody>':'<tr><td>Sin movimientos.</td></tr>'}
@@ -1146,7 +1149,7 @@ const PLANT={apertura:{g:'Asiento de apertura: aporte de capital inicial',l:[['1
  libre:{g:'',l:[['','D'],['','H']]}};
 let ML=[],aEdit=null;
 function modoEdicion(m){aEdit=m?m.id:null;$('aTit').textContent=m?'Editar asiento':'Nuevo asiento';$('aSave').textContent=m?'Guardar cambios':'Guardar asiento';$('aCancel').style.display=m?'':'none';$('aRep').disabled=!!m;if(m)$('aRep').checked=false;
-  const n=$('aEditNota');n.style.display=m?'':'none';n.textContent=m?`Estás modificando el asiento del ${m.fecha} «${m.glosa}». Cambia lo que necesites y toca "Guardar cambios".`:''}
+  const n=$('aEditNota');n.style.display=m?'':'none';n.textContent=m?(String(m.id).startsWith('R:')?`Estás corrigiendo a mano un asiento automático (${m.fecha} «${m.glosa}»). Cambia las cuentas o montos y toca "Guardar cambios". El documento y el F29 no cambian.`:`Estás modificando el asiento del ${m.fecha} «${m.glosa}». Cambia lo que necesites y toca "Guardar cambios".`):''}
 function cargarPlantilla(){const t=PLANT[$('aPla').value];ML=t.l.map(([sp])=>({c:sp?buscar(sp):'',d:0,h:0}));if(t.g&&!$('aGlo').value)$('aGlo').value=t.g;renderLin()}
 function totA(){const D=ML.reduce((s,l)=>s+(+l.d||0),0),H=ML.reduce((s,l)=>s+(+l.h||0),0);$('aTD').textContent=fmt(D);$('aTH').textContent=fmt(H);const df=Math.round(D-H);$('aDif').textContent=df?`Diferencia ${fmt(Math.abs(df))} al ${df>0?'Haber':'Debe'}`:'Totales cuadrados';$('aDif').style.color=df?'var(--acc)':'';return{D,H,df}}
 function renderLin(){$('aLin').innerHTML=ML.map((l,i)=>`<tr><td style="min-width:120px"><input list="dlPlan" data-al="${i}" data-f="c" value="${esc(l.c)}"></td><td class="note">${esc(l.c?nom(l.c):'')}</td><td style="min-width:110px"><input inputmode="numeric" data-al="${i}" data-f="d" value="${l.d||''}" style="text-align:right"></td><td style="min-width:110px"><input inputmode="numeric" data-al="${i}" data-f="h" value="${l.h||''}" style="text-align:right"></td><td><button class="btn alt" data-ax="${i}" type="button" style="min-height:34px;padding:3px 10px">×</button></td></tr>`).join('');$('dlPlan').innerHTML=S.plan.map(p=>`<option value="${esc(p.c)}">${esc(p.n)}</option>`).join('');totA()}
@@ -1154,9 +1157,11 @@ $('aLin').addEventListener('input',e=>{const i=e.target.dataset.al;if(i===undefi
 $('aLin').addEventListener('click',e=>{const b=e.target.closest('[data-ax]');if(!b)return;ML.splice(+b.dataset.ax,1);renderLin()});
 $('aAdd').addEventListener('click',()=>{ML.push({c:'',d:0,h:0});renderLin()});
 $('aPla').addEventListener('change',()=>{$('aGlo').value='';cargarPlantilla()});
+$('aBusB').addEventListener('click',traerAsiento);$('aBusN').addEventListener('keydown',e=>{if(e.key==='Enter')traerAsiento()});
 $('aSave').addEventListener('click',()=>{const msg=$('msgA');msg.className='msg err';const f=$('aFec').value,g=$('aGlo').value.trim(),lin=ML.filter(l=>l.c&&(l.d||l.h));const{D,df}=totA();
   if(!f){msg.textContent='Falta la fecha.';return}if(!g){msg.textContent='Falta la glosa.';return}if(lin.length<2){msg.textContent='El asiento necesita al menos dos líneas con cuenta y monto.';return}
   const mal=lin.find(l=>!S.plan.some(p=>p.c===l.c));if(mal){msg.textContent=`La cuenta ${mal.c} no está en tu plan de cuentas.`;return}if(df){msg.textContent='El asiento no cuadra: el Debe debe ser igual al Haber.';return}
+  if(aEdit&&aEdit.startsWith('R:')){S.reemp=S.reemp||{};S.reemp[aEdit.slice(2)]={fecha:f,glosa:g,lineas:lin.map(l=>({c:l.c,d:+l.d||0,h:+l.h||0})),mod:new Date().toISOString()};modoEdicion(null);msg.className='msg';msg.textContent=`Asiento corregido a mano: ${g}, por ${fmt(D)}. En el Libro diario puedes volver al automático.`;aviso('Asiento corregido. Los libros y balances se recalcularon.',true);$('aGlo').value='';cargarPlantilla();save();render();return}
   if(aEdit){const x=(S.manual||[]).find(z=>z.id===aEdit);if(!x){msg.textContent='Ese asiento ya no existe (quizás lo quitaste).';modoEdicion(null);return}
     x.fecha=f;x.glosa=g;x.lineas=lin.map(l=>({c:l.c,d:+l.d||0,h:+l.h||0}));x.mod=new Date().toISOString();modoEdicion(null);msg.className='msg';msg.textContent=`Cambios guardados: ${g}, por ${fmt(D)}.`;aviso('Asiento modificado. Los libros, balances y declaraciones se recalcularon.',true);S.emp.per=f.slice(0,4);$('aGlo').value='';cargarPlantilla();save();render();return}
   const [y,m,d]=f.split('-').map(Number),hasta=$('aRep').checked?12:m;S.manual=S.manual||[];
@@ -1202,16 +1207,31 @@ $('cenOk').addEventListener('click',()=>{if(!CEN||CEN.err)return;const pers=Obje
     S.manual.push({id:Date.now()+'-c'+i,cen:true,fecha,glosa:`Centralización contabilidad acumulada ${MESES[mm-1]} ${yy}`,lineas})});
   const y0=pers[0].slice(0,4);S.emp.per=y0;CEN=null;$('cenTxt').value='';$('tCen').innerHTML='';$('cenOk').classList.add('hide');$('cenMsg').className='msg';$('cenMsg').textContent=`Listo: ${pers.length} asiento(s) de centralización creados. Puedes revisarlos, editarlos o quitarlos en la lista de asientos manuales.`;aviso('Contabilidad centralizada cargada.',true);save();render()});
 $('aCancel').addEventListener('click',()=>{modoEdicion(null);$('aGlo').value='';$('msgA').textContent='';cargarPlantilla()});
+function abrirReemp(rk){const y=String(rk.split('|')[rk[0]==='X'||rk[0]==='B'?1:4]||S.emp.per).slice(0,4),L=movs(+y||+S.emp.per,1);let ls=L.filter(l=>l.rk===rk||l.o==='R|'+rk);if(!ls.length){const L2=movs(+S.emp.per,1);ls=L2.filter(l=>l.rk===rk||l.o==='R|'+rk)}if(!ls.length)return;
+  document.querySelector('#tabs [data-t="manual"]').click();setTimeout(()=>{ML=ls.map(l=>({c:l.c,d:Math.round(l.d)||0,h:Math.round(l.h)||0}));$('aFec').value=ls[0].f;$('aGlo').value=ls[0].g;$('msgA').textContent='';modoEdicion({id:'R:'+rk,fecha:ls[0].f,glosa:ls[0].g});renderLin();$('aTit').scrollIntoView({behavior:'smooth',block:'start'})},60)}
+function traerAsiento(){const v=$('aBusN').value.trim().toUpperCase().replace(/\s+/g,''),msg=$('aBusMsg');msg.className='msg err';if(!v){msg.textContent='Escribe el N° del asiento.';return}
+  const L=asientos(+S.emp.per,false),K=clasificar(L);let n=null;if(/^\d+$/.test(v))n=+v;else{const m=v.match(/^([IET])-?(\d+)$/);if(m){const f=Object.entries(K).find(([k,x])=>x.num===m[1]+'-'+m[2]);if(f)n=+f[0]}}
+  const ls=n==null?[]:L.filter(l=>l.n===n);if(!ls.length){msg.textContent=`No encontré el asiento ${v} en ${S.emp.per}. Revisa el número en el Libro diario.`;return}
+  const o=ls.find(l=>l.o)?.o||'',rk=ls.find(l=>l.rk)?.rk||'';msg.className='msg';msg.textContent='';$('aBusN').value='';
+  if(o[0]==='A'){editarAsiento(o.slice(2));return}if(o[0]==='R'){abrirReemp(o.slice(2));return}if(rk){abrirReemp(rk);return}
+  msg.className='msg err';msg.textContent='Ese asiento es de apertura o de cierre: se calcula solo con los saldos y no se puede modificar.'}
 function editarAsiento(id){const m=(S.manual||[]).find(z=>z.id===id);if(!m)return false;ML=m.lineas.map(l=>({c:l.c,d:l.d||0,h:l.h||0}));$('aFec').value=m.fecha;$('aGlo').value=m.glosa;$('msgA').textContent='';modoEdicion(m);renderLin();$('aTit').scrollIntoView({behavior:'smooth',block:'start'});return true}
-$('tDia').addEventListener('click',e=>{const b=e.target.closest('[data-dedit]');if(!b)return;const o=b.dataset.dedit,t=o[0],det=o.slice(2),msg=$('msgDia');msg.className='msg';
-  const ir=v=>{const x=document.querySelector(`#tabs [data-t="${v}"]`);if(x)x.click()};
-  if(t==='A'){ir('manual');setTimeout(()=>{if(!editarAsiento(det)){msg.textContent='No encontré ese asiento.'}},60);return}
-  let txt;if(t==='V'||t==='C')txt=`Este asiento se arma solo desde el documento ${det} del Libro de ${t==='V'?'ventas':'compras'}. Para corregirlo, corrige el documento o la cuenta asignada en "Libro compras y ventas". Si el documento está bien y solo quieres reclasificar, haz un asiento manual de ajuste.`;
-  else if(t==='B')txt='Este asiento viene de la cartola bancaria. Para corregirlo, cambia la cuenta o la conciliación de ese movimiento en "Bancos".';
-  else if(/^Centralización remuneraciones/.test(det))txt='Este asiento se arma solo desde "Remuneraciones". Corrige ahí la planilla de ese mes y el asiento se actualiza.';
-  else if(/^Boleta honorarios/.test(det))txt='Este asiento se arma solo desde "Honorarios". Corrige ahí la boleta y el asiento se actualiza.';
-  else txt=`Este asiento (${det}) lo genera el programa automáticamente desde Activo fijo, la corrección monetaria o la centralización del F29. Corrige el dato en esa sección y el asiento se actualiza solo.`;
-  msg.textContent=txt;msg.scrollIntoView({behavior:'smooth',block:'center'})});
+$('tDia').addEventListener('click',e=>{const go=e.target.closest('[data-dgo]');if(go){const x=document.querySelector(`#tabs [data-t="${go.dataset.dgo}"]`);if(x)x.click();return}
+  const vu=e.target.closest('[data-dvolver]');if(vu){e.preventDefault();if(vu.dataset.arm!=='1'){vu.dataset.arm='1';vu.textContent='¿seguro? toca de nuevo';setTimeout(()=>{vu.dataset.arm='';vu.textContent='volver al automático'},3000);return}delete (S.reemp||{})[vu.dataset.dvolver];save();render();return}
+  const mo=e.target.closest('[data-dmod]');if(mo){abrirReemp(mo.dataset.dmod);return}
+  const b=e.target.closest('[data-dedit]');if(!b)return;const o=b.dataset.dedit,t=o[0],det=o.slice(2);$('tDia').querySelectorAll('tr.dmsg').forEach(r=>r.remove());
+  if(t==='R'){abrirReemp(det);return}
+  if(t==='A'){document.querySelector('#tabs [data-t="manual"]').click();setTimeout(()=>{if(!editarAsiento(det))$('msgA').textContent='No encontré ese asiento.'},60);return}
+  let txt,dest='',dn='';
+  if(t==='V'||t==='C'){txt=`Este asiento se arma solo desde el documento ${det} del Libro de ${t==='V'?'ventas':'compras'}. Corrige ahí el documento o la cuenta asignada. Si el documento está bien y solo quieres reclasificar, haz un asiento manual de ajuste.`;dest='rcv';dn='Libro compras y ventas'}
+  else if(t==='B'){txt='Este asiento viene de la cartola bancaria. Corrige la cuenta o la conciliación de ese movimiento en Bancos.';dest='bancos';dn='Bancos'}
+  else if(/^Centralización remuneraciones/.test(det)){txt='Este asiento se arma solo desde la planilla de Remuneraciones de ese mes. Corrígela ahí y el asiento se actualiza.';dest='rem';dn='Remuneraciones'}
+  else if(/^Boleta honorarios/.test(det)){txt='Este asiento se arma solo desde Honorarios. Corrige ahí la boleta y el asiento se actualiza.';dest='hon';dn='Honorarios'}
+  else if(/^Centralización IVA/.test(det)){txt='Este asiento es la centralización del F29: se arma solo con las compras, ventas, retenciones y PPM del mes. Corrige esos datos y se actualiza.';dest='f29';dn='IVA y F29'}
+  else if(/activo fijo/i.test(det)){txt='Este asiento se arma solo desde Activo fijo. Corrige ahí el bien y el asiento se actualiza.';dest='af';dn='Activo fijo'}
+  else txt=`Este asiento (${det}) lo arma el programa automáticamente. Corrige el dato de origen y se actualiza solo.`;
+  const tr=document.createElement('tr');tr.className='dmsg';tr.innerHTML=`<td colspan="9"><div style="border:2px solid var(--acc);border-radius:10px;padding:10px 12px;margin:4px 0;background:rgba(229,90,62,.08)"><b>¿Cómo corregir este asiento?</b><br>${esc(txt)}<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">${dest?`<button class="btn" data-dgo="${dest}" style="min-height:34px;padding:3px 12px">Ir a ${esc(dn)}</button>`:''}${b.dataset.rk?`<button class="btn alt" data-dmod="${esc(b.dataset.rk)}" style="min-height:34px;padding:3px 12px">Modificar este asiento aquí</button>`:''}</div><div class="note" style="margin-top:6px">«Modificar aquí» cambia solo el asiento contable (diario, mayor, balance y estados). El documento y el F29 no cambian.</div></div></td>`;
+  const row=b.closest('tr');let last=row;let nx=row.nextElementSibling;while(nx&&!nx.classList.contains('sep')&&!nx.classList.contains('tot')){last=nx;nx=nx.nextElementSibling}last.after(tr)});
 $('tAList').addEventListener('click',e=>{const ed=e.target.closest('[data-aedit]');if(ed){const m=(S.manual||[]).find(z=>z.id===ed.dataset.aedit);if(!m)return;ML=m.lineas.map(l=>({c:l.c,d:l.d||0,h:l.h||0}));$('aFec').value=m.fecha;$('aGlo').value=m.glosa;$('msgA').textContent='';modoEdicion(m);renderLin();$('aTit').scrollIntoView({behavior:'smooth',block:'start'});return}
   const b=e.target.closest('[data-adel]');if(!b)return;if(aEdit===b.dataset.adel&&b.dataset.arm==='1')modoEdicion(null);if(b.dataset.arm!=='1'){b.dataset.arm='1';b.textContent='¿Seguro?';setTimeout(()=>{b.dataset.arm='';b.textContent='Quitar'},3000);return}S.manual=S.manual.filter(x=>x.id!==b.dataset.adel);save();render()});
 
