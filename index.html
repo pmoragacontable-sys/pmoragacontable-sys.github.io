@@ -97,7 +97,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 26-11-2026 · 22:20</p>
+  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 10:00</p>
   <p class="sub">Del Registro de Compras y Ventas al libro diario, mayor y balance de comprobación.</p>
   <div id="avisoApp"></div>
   <div class="emp" id="empLine"></div>
@@ -188,7 +188,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
     <h2>2. Cargar RCV del SII</h2>
     <p class="note">Sube los libros de compras y ventas en CSV o Excel: el RCV del SII (desde agosto 2017) o los libros electrónicos o en planilla de años anteriores. Si el programa no reconoce el tipo, elígelo antes de subir.</p>
     <label style="max-width:300px;margin-bottom:10px">Tipo de libro<select id="selKind"><option value="auto">Reconocer automáticamente</option><option value="compras">Libro de compras</option><option value="ventas">Libro de ventas</option></select></label>
-    <div class="drop" id="drop">Arrastra aquí los archivos o<br><br><label class="btn" style="display:inline-block;color:var(--bg)">Elegir archivos<input id="fRcv" type="file" accept=".csv,.xlsx,.xls,.txt,.pdf" multiple class="hide"></label></div>
+    <div class="drop" id="drop">Arrastra aquí los archivos o<br><br><label class="btn" style="display:inline-block;color:var(--bg)">Elegir archivos<input id="fRcv" type="file" accept=".csv,.gz,.xlsx,.xls,.txt,.pdf" multiple class="hide"></label></div>
     <p class="msg" id="msgRcv"></p>
     <div class="row" style="margin-top:12px">
       <button class="btn alt hide" id="bEj">Cargar datos de ejemplo</button>
@@ -204,7 +204,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
   <div class="panel">
     <h2>Boletas y comprobantes de pago electrónicos</h2>
     <p class="note">Carga los totales diarios o mensuales de boletas (39 y 41) y de comprobantes de pago con tarjeta (48). Se registran como ventas: generan IVA débito, van al F29 y al libro de ventas. Puedes subir el resumen del SII o del sistema de ventas (columnas de fecha, tipo, cantidad, exento y total) o ingresarlos aquí.</p>
-    <div class="row"><label class="btn alt" style="display:inline-block">Subir resumen de boletas<input id="fBol" type="file" accept=".csv,.xlsx,.xls,.txt" class="hide"></label></div>
+    <div class="row"><label class="btn alt" style="display:inline-block">Subir resúmenes de boletas<input id="fBol" type="file" accept=".csv,.gz,.xlsx,.xls,.txt" multiple class="hide"></label></div>
     <form id="bolF" class="grid" style="margin-top:10px" autocomplete="off">
       <label>Fecha (día o último día del mes)<input id="bFec" type="date" required></label>
       <label>Tipo<select id="bTip"><option value="39">39 Boleta electrónica afecta</option><option value="41">41 Boleta exenta electrónica</option><option value="48">48 Comprobante de pago electrónico</option></select></label>
@@ -883,7 +883,8 @@ function renderEmps(){$('selEmp').innerHTML=EMPS.map(x=>`<option value="${x.id}"
 try{const l=localStorage.getItem('contaSII');if(l){S=cargar(l);migrar();S.banco=JSON.parse(localStorage.getItem('contaSIIb')||'null')||S.banco||[]}}catch(e){}
 
 /* ---------- lectura de archivos ---------- */
-function readRows(file){return new Promise((res,rej)=>{const r=new FileReader();const isX=/\.xlsx?$/i.test(file.name);
+async function gunzipFile(file){if(!/\.gz$/i.test(file.name))return file;if(!window.DecompressionStream)throw new Error('Este navegador no puede abrir archivos .gz. Descomprímelo primero o usa Chrome actualizado.');const b=await new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).blob();return new File([b],file.name.replace(/\.gz$/i,''))}
+async function readRows(file){file=await gunzipFile(file);return new Promise((res,rej)=>{const r=new FileReader();const isX=/\.xlsx?$/i.test(file.name);
   r.onerror=()=>rej(r.error);
   r.onload=()=>{try{if(isX){if(!window.XLSX)throw new Error('No se pudo cargar el lector de Excel; sube el archivo en CSV.');const wb=XLSX.read(r.result,{type:'array'});res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}))}
     else{const t=r.result.replace(/^﻿/,'');const first=t.split(/\r\n|\r|\n/)[0];const d=(first.split(';').length>=first.split(',').length)?';':',';res(t.split(/\r\n|\r|\n/).filter(x=>x.trim()).map(x=>x.split(d).map(v=>v.replace(/^"|"$/g,'').trim())))}}catch(e){rej(e)}};
@@ -900,21 +901,21 @@ function toDocs(rows,forz){
   const hi=rows.findIndex(r=>r.some(c=>isF(norm(c)))&&r.some(c=>norm(c).includes('rut')));if(hi<0)throw new Error('No encontré la fila de títulos (columnas de RUT y número o folio del documento).');
   const h=rows[hi].map(norm),col=(...ks)=>{for(const k of ks){const i=h.indexOf(k);if(i>=0)return i}for(const k of ks){const i=h.findIndex(x=>x.startsWith(k));if(i>=0)return i}return -1};
   let kind=forz&&forz!=='auto'?forz:h.some(x=>x.includes('proveedor'))?'compras':h.some(x=>x.includes('cliente')||x.includes('receptor'))?'compras_o_ventas':null;
-  if(kind==='compras_o_ventas')kind=h.some(x=>x.includes('cliente'))?'ventas':null;
+  if(kind==='compras_o_ventas')kind=h.some(x=>x.includes('cliente')||x.startsWith('rutreceptor'))?'ventas':null;
   if(!kind)throw new Error('No reconozco si es libro de compras o de ventas. Elige el tipo de libro arriba del botón y vuelve a subirlo.');
   if(h.some(x=>x.startsWith('fechareclamo')))throw new Error('Este archivo es el de documentos RECLAMADOS (rechazados) del Registro de Compras y Ventas. No se carga: un documento reclamado no es compra ni venta válida y no da derecho a crédito fiscal. Descarga del SII el archivo de la pestaña «Registro».');
   const estC=kind==='compras'?h.findIndex(x=>/^estado/.test(x)):-1;const fi=h.indexOf('folio')>=0?h.indexOf('folio'):h.findIndex(x=>x!=='nro'&&isF(x))>=0?h.findIndex(x=>x!=='nro'&&isF(x)):h.findIndex(isF);
   const c={tipo:col('tipodoc','tipodocumento','tipodte','tipo','td','coddoc','codigo'),rut:col('rutproveedor','rutcliente','rutemisor','rutreceptor','rut'),raz:col('razonsocial','nombre','proveedor','cliente'),folio:fi,fecha:col('fechadocto','fechadocumento','fechaemision','fecha'),ex:col('montoexento','exento','exentos'),neto:col('montoneto','neto','afecto','montoafecto'),
     iva:kind==='ventas'?col('montoiva','iva','ivadebito','ivadebitofiscal'):col('montoivarecuperable','ivarecuperable','ivacredito','ivacreditofiscal','montoiva','iva'),ivaNR:col('montoivanorecuperable','ivanorecuperable','ivanorec'),ivaUC:col('montoivausocomun','ivausocomun'),netoAF:col('montonetoactivofijo','netoactivofijo'),total:col('montototal','total'),oic:col('codigootroimpuesto','codigootroimp','codotroimp'),oiv:col('valorotroimpuesto','valorotroimp','montootroimpuesto','montootroimp'),sdc:col('imptosinderechoacredito','impuestosinderechoacredito')};
   const g=(r,i)=>i>=0?r[i]:'';
-  const docs=rows.slice(hi+1).filter(r=>!/reclam|rechaz/i.test(String(estC>=0?r[estC]:''))).filter(r=>g(r,c.folio)!==''&&!/^\s*(sub)?totales?\b/i.test(String(r.find(v=>String(v).trim())??''))&&tipoDe(g(r,c.tipo))).map(r=>{const tipo=tipoDe(g(r,c.tipo));const d={tipo,rut:String(g(r,c.rut)),raz:String(g(r,c.raz)),folio:String(g(r,c.folio)),fecha:fecha(g(r,c.fecha)),ex:Math.abs(num(g(r,c.ex))),neto:Math.abs(num(g(r,c.neto))),iva:Math.abs(num(g(r,c.iva))),ivaNR:Math.abs(num(g(r,c.ivaNR))),...(c.ivaUC!=null&&Math.abs(num(g(r,c.ivaUC)))>0&&!Math.abs(num(g(r,c.iva)))?{iva:Math.abs(num(g(r,c.ivaUC))),trat:'uc'}:{}),netoAF:Math.abs(num(g(r,c.netoAF))),total:Math.abs(num(g(r,c.total))),s:NC.has(tipo)?-1:1};const oiv=Math.abs(num(g(r,c.oiv))),sdc=Math.abs(num(g(r,c.sdc)));if(oiv){d.oi=oiv;d.oic=String(g(r,c.oic)).trim()}if(sdc)d.sdc=sdc;
+  const docs=rows.slice(hi+1).filter(r=>!/reclam|rechaz/i.test(String(estC>=0?r[estC]:''))).filter(r=>g(r,c.folio)!==''&&!/^\s*(sub)?totales?\b/i.test(String(r.find(v=>String(v).trim())??''))&&tipoDe(g(r,c.tipo))).map(r=>{const tipo=tipoDe(g(r,c.tipo));const d={tipo,rut:String(g(r,c.rut)),raz:String(g(r,c.raz)),folio:String(g(r,c.folio)),fecha:fecha(g(r,c.fecha)),ex:Math.abs(num(g(r,c.ex))),neto:Math.abs(num(g(r,c.neto))),iva:Math.abs(num(g(r,c.iva))),ivaNR:Math.abs(num(g(r,c.ivaNR))),...(c.ivaUC!=null&&Math.abs(num(g(r,c.ivaUC)))>0&&!Math.abs(num(g(r,c.iva)))?{iva:Math.abs(num(g(r,c.ivaUC))),trat:'uc'}:{}),netoAF:Math.abs(num(g(r,c.netoAF))),total:Math.abs(num(g(r,c.total))),s:NC.has(tipo)?-1:1,...([35,38,39,41,48].includes(tipo)?{n:1}:{})};const oiv=Math.abs(num(g(r,c.oiv))),sdc=Math.abs(num(g(r,c.sdc)));if(oiv){d.oi=oiv;d.oic=String(g(r,c.oic)).trim()}if(sdc)d.sdc=sdc;
     if(!d.total)d.total=d.ex+d.neto+d.iva+d.ivaNR;return d});
   if(!docs.length){const resto=rows.slice(hi+1).filter(r=>r.some(v=>String(v).trim()));
     if(!resto.length)throw new Error('El archivo trae solo la fila de títulos, sin documentos. Para períodos anteriores a agosto 2017 el SII no tiene RCV: usa el libro de compras de esa época (IECV o planilla).');
     throw new Error(`Hay ${resto.length} filas bajo los títulos, pero no reconocí el tipo de documento. Columna tipo: «${c.tipo>=0?rows[hi][c.tipo]:'no encontrada'}». Primera fila: ${resto[0].slice(0,8).join(' | ')}`)}
   return{kind,docs}}
 async function cargarRCV(files){const out=[],años=new Set();$('msgRcv').className='msg';if(!files.length){$('msgRcv').textContent='No se recibió ningún archivo.';return}$('msgRcv').textContent='Leyendo '+files.map(f=>f.name).join(', ')+'…';
-  for(const f of files){if(/\.pdf$/i.test(f.name)){out.push(f.name+': es PDF. Por ahora sube el libro en Excel o CSV, o adjúntalo en el chat.');continue}try{const rws=await readRows(f);const{kind,docs}=toDocs(rws,$('selKind').value);const key=d=>d.tipo+'|'+d.rut+'|'+d.folio;
+  for(const f of files){if(/\.pdf$/i.test(f.name)){out.push(f.name+': es PDF. Por ahora sube el libro en Excel o CSV, o adjúntalo en el chat.');continue}try{const rws=await readRows(f);if(esReporteBol(rws)){out.push(cargarBolDocs(f.name,rws,años));continue}const{kind,docs}=toDocs(rws,$('selKind').value);const key=d=>d.tipo+'|'+d.rut+'|'+d.folio;
       const pm=[...f.name.matchAll(/(?:^|[_\- ])(20\d{2})(0[1-9]|1[0-2])(?=[_\-. ]|$)/g)].pop(),pc=perCaratula(rws),per=pm?pm[1]+'-'+pm[2]:pc;let mov=0;
       if(per)docs.forEach(d=>{d.per=per;const fm=String(d.fecha).slice(0,7);if(fm<per){d.fdoc=d.fecha;d.fecha=per+'-01';mov++}});
       const perDoc=x=>x.per||(x.fdoc?String(x.fecha).slice(0,7):'');let reub=0,otro=0;const nuevos=[];
@@ -2607,12 +2608,25 @@ $('bolF').addEventListener('submit',e=>{e.preventDefault();const msg=$('msgBol')
   const fd=$('bFd').value.trim(),fh=$('bFh').value.trim();if(fd&&fh&&+fh<+fd){msg.className='msg err';msg.textContent='El folio hasta no puede ser menor que el folio desde.';return}
   const d=docBoleta(f,$('bTip').value,num($('bCan').value),t,ex,fd,fh);if(!agregarBol(d)){msg.className='msg err';msg.textContent='Ese total de boletas ya está ingresado para esa fecha y tipo.';return}
   S.emp.per=f.slice(0,4);msg.textContent=`Agregado: ${d.raz} del ${f}, total ${fmt(t)} (neto ${fmt(d.neto)}, IVA ${fmt(d.iva)}).`;aviso('Total de boletas agregado.',true);['bCan','bFd','bFh','bTot','bCalc'].forEach(i=>$(i).value='');$('bEx').value='0';save();render()});
-$('fBol').addEventListener('change',async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const msg=$('msgBol');msg.className='msg';
-  try{const rows=await readRows(f),hi=rows.findIndex(r=>{const n=r.map(norm);return n.some(x=>/total/.test(x))&&n.some(x=>/tipo|fecha|documento/.test(x))});if(hi<0)throw new Error('No encontré la fila de títulos (fecha o tipo, y monto total).');
-    const h=rows[hi].map(norm),col=mkCol(h),c={f:h.findIndex(x=>x.startsWith('fecha')||x==='dia'||x==='periodo'),t:col('tipodocumento','tipodoc','tipo'),n:col('totaldocumentos','cantidad','cantidaddocumentos','ndocumentos','documentos'),ex:col('montoexento','exento'),tot:col('montototal','total','totalventa'),fd:col('foliodesde','folioinicial','desde'),fh:col('foliohasta','foliofinal','hasta')};
-    let n=0,rep=0;const perDef=S.emp.per+'-'+(S.mes||'12');rows.slice(hi+1).forEach(r=>{const tot=Math.abs(num(r[c.tot]));if(!tot)return;let tipo=c.t>=0?tipoDe(r[c.t]):39;if(![39,41,48,35,38].includes(tipo)){const tx=norm(r[c.t]);tipo=/comprobante|voucher|pago/.test(tx)?48:/exent/.test(tx)?41:39}
-      let fe=c.f>=0?fecha(r[c.f]):'';if(!/^\d{4}-\d{2}-\d{2}$/.test(fe)){const pr=c.f>=0?perDe(r[c.f]):'';fe=ultimoDia(pr||perDef)}const d=docBoleta(fe,tipo,c.n>=0?num(r[c.n]):1,tot,c.ex>=0?Math.abs(num(r[c.ex])):0,c.fd>=0?String(r[c.fd]).trim():'',c.fh>=0?String(r[c.fh]).trim():'');if(agregarBol(d))n++;else rep++});
-    if(!n&&!rep)throw new Error('Encontré los títulos pero ninguna fila con monto total.');msg.textContent=`${f.name}: ${n} totales de boletas agregados`+(rep?`, ${rep} repetidos omitidos`:'')+'.';save();render()}catch(err){msg.className='msg err';msg.textContent=err.message}});
+function fechaBol(v){const t=String(v??'').trim();if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(t)&&/(Z|[+-]\d{2}:?\d{2})$/.test(t)){const d=new Date(t);if(!isNaN(d))return d.toLocaleDateString('en-CA',{timeZone:'America/Santiago'})}return fecha(v)}
+function bolHdr(rows){return rows.findIndex(r=>{const n=r.map(norm);return n.some(x=>/total/.test(x))&&n.some(x=>/tipo|fecha|documento/.test(x))})}
+function esReporteBol(rows){const hi=bolHdr(rows);if(hi<0)return false;const h=rows[hi].map(norm);return h.includes('folio')&&!h.some(x=>x.includes('rut')&&!x.includes('vendedor'))&&h.some(x=>x==='dte'||x.startsWith('estadoboleta')||x==='vendedor')}
+function bolDocs(rows){const hi=bolHdr(rows);if(hi<0)throw new Error('No encontré la fila de títulos (fecha o tipo, y monto total).');
+  const h=rows[hi].map(norm),col=mkCol(h),c={f:h.findIndex(x=>x.startsWith('fecha')||x==='dia'||x==='periodo'),t:col('tipodocumento','tipodoc','tipodte','dte','tipo'),n:col('totaldocumentos','cantidad','cantidaddocumentos','ndocumentos','documentos'),ex:col('montoexento','exento'),tot:col('montototal','total','totalventa'),fd:col('foliodesde','folioinicial','desde'),fh:col('foliohasta','foliofinal','hasta'),fo:h.indexOf('folio'),neto:col('montoneto','neto'),iva:col('montoiva','iva'),est:col('estadoboleta','estado')};
+  const perDef=S.emp.per+'-'+(S.mes||'12'),det=c.fo>=0&&c.fd<0,G={},docs=[];let anul=0;
+  rows.slice(hi+1).forEach(r=>{const tot=Math.abs(num(r[c.tot]));if(!tot)return;if(c.est>=0&&/anul|rechaz|nula/i.test(String(r[c.est]))){anul++;return}
+    let tipo=c.t>=0?tipoDe(r[c.t]):39;if(![39,41,48,35,38].includes(tipo)){const tx=norm(r[c.t]);tipo=/comprobante|voucher|pago/.test(tx)?48:/exent/.test(tx)?41:39}
+    let fe=c.f>=0?fechaBol(r[c.f]):'';if(!/^\d{4}-\d{2}-\d{2}$/.test(fe)){const pr=c.f>=0?perDe(r[c.f]):'';fe=ultimoDia(pr||perDef)}const ex=c.ex>=0?Math.abs(num(r[c.ex])):0;
+    if(!det){docs.push(docBoleta(fe,tipo,c.n>=0?num(r[c.n]):1,tot,ex,c.fd>=0?String(r[c.fd]).trim():'',c.fh>=0?String(r[c.fh]).trim():''));return}
+    const k=fe+'|'+tipo,g=G[k]=G[k]||{fe,tipo,n:0,tot:0,ex:0,neto:0,iva:0,fo:[]};g.n++;g.tot+=tot;g.ex+=ex;if(c.neto>=0)g.neto+=Math.abs(num(r[c.neto]));if(c.iva>=0)g.iva+=Math.abs(num(r[c.iva]));const fo=String(r[c.fo]).trim();if(fo)g.fo.push(fo)});
+  Object.values(G).sort((a,b)=>a.fe<b.fe?-1:1).forEach(g=>{const fs=g.fo.map(Number).filter(x=>!isNaN(x)).sort((a,b)=>a-b);const d=docBoleta(g.fe,g.tipo,g.n,g.tot,g.ex,fs.length?String(fs[0]):'',fs.length?String(fs[fs.length-1]):'');if(c.neto>=0&&c.iva>=0&&g.tipo!==41&&g.neto+g.iva+d.ex===g.tot){d.neto=g.neto;d.iva=g.iva}docs.push(d)});
+  return{docs,anul,det}}
+function cargarBolDocs(nombre,rows,años){const{docs,anul,det}=bolDocs(rows);if(años)docs.forEach(d=>años.add(d.fecha.slice(0,4)));let n=0,rep=0,bol=0;docs.forEach(d=>{if(agregarBol(d)){n++;bol+=d.n||1}else rep++});
+  if(!n&&!rep)throw new Error('Encontré los títulos pero ninguna fila con monto total.');
+  if(!n)return `${nombre}: estas boletas ya estaban cargadas (${rep} totales repetidos, no se duplicaron).`;return `${nombre}: `+(det?`${bol} boletas agrupadas en ${n} totales diarios`:`${n} totales de boletas agregados`)+(rep?`, ${rep} repetidos omitidos`:'')+(anul?`, ${anul} anuladas no consideradas`:'')+'.'}
+$('fBol').addEventListener('change',async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length)return;const msg=$('msgBol');msg.className='msg';const res=[];let malo=false;
+  for(const f of fs)try{res.push(cargarBolDocs(f.name,await readRows(f)))}catch(err){malo=true;res.push(f.name+': '+err.message)}
+  if(malo)msg.className='msg err';msg.innerHTML=res.map(x=>esc(x)).join('<br>');save();render()});
 
 /* ---------- comisiones de tarjetas y apps ---------- */
 const APPRX=/transbank|webpay|redcompra|mercado ?pago|mercadopago|getnet|sumup|klap|flow|onepay|mach|compraqui/i;
