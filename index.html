@@ -97,7 +97,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 18:30</p>
+  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 18:50</p>
   <p class="sub">Del Registro de Compras y Ventas al libro diario, mayor y balance de comprobación.</p>
   <div id="avisoApp"></div>
   <div class="emp" id="empLine"></div>
@@ -296,7 +296,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
     <p class="note">Para la apertura o el aporte de capital, las remuneraciones, los arriendos sin factura y cualquier otro asiento. Elige una plantilla y completa los montos.</p>
     <div class="row" style="align-items:flex-end;gap:8px;margin:6px 0 12px;padding:10px;border:1px dashed var(--line,#ccc);border-radius:10px"><label style="max-width:300px;margin:0">Corregir un asiento existente: N° del Libro diario o comprobante<input id="aBusN" placeholder="Ej.: 15 o T-3"></label><button class="btn" id="aBusB" type="button">Traer asiento</button></div><p class="msg" id="aBusMsg" style="margin:-6px 0 10px"></p>
     <div class="grid">
-      <label>Plantilla<select id="aPla"><option value="libre">Asiento libre</option><option value="apertura">Apertura / aporte de capital</option><option value="rem">Remuneraciones del mes</option><option value="arr">Arriendo pagado</option></select></label>
+      <label>Plantilla<select id="aPla"><option value="libre">Asiento libre</option><option value="apertura">Apertura / aporte de capital</option><option value="rem">Remuneraciones del mes</option><option value="arr">Arriendo pagado</option><option value="f29">Pago de impuestos F29 del mes anterior</option></select></label>
       <label>Fecha<input id="aFec" type="date"></label>
       <label style="grid-column:1/-1">Glosa<input id="aGlo" placeholder="Ej.: Centralización remuneraciones agosto 2016"></label>
     </div>
@@ -1146,17 +1146,22 @@ $('tDet').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if
 const PLANT={apertura:{g:'Asiento de apertura: aporte de capital inicial',l:[['1010101|^caja$','D'],['1010104|^banco','D'],['2030101|capital suscrito y pagado|^capital','H']]},
  rem:{g:'Centralización remuneraciones',l:[['3010501|^remuneraciones$','D'],['3010503|gratificaci[oó]n legal$','D'],['3010514|^aporte patronal$','D'],['2011102|afp por pagar','H'],['2011104|isapre por pagar','H'],['2011103|ips por pagar','H'],['2011105|afc trabajador','H'],['2011106|aporte patronal afc','H'],['2011107|aporte patronal sis','H'],['2011108|mutualidad','H'],['2011203|impto\\.? [uú]nico','H'],['2011101|remuneraciones por pagar','H']]},
  arr:{g:'Pago arriendo',l:[['3010803|arriendo local|arriendo de inmueb|^arriendos?$','D'],['1010104|^banco','H']]},
+ f29:{g:'Pago F29',l:[['','D'],['1010104|^banco','H']]},
  libre:{g:'',l:[['','D'],['','H']]}};
 let ML=[],aEdit=null;
 function modoEdicion(m){aEdit=m?m.id:null;$('aTit').textContent=m?'Editar asiento':'Nuevo asiento';$('aSave').textContent=m?'Guardar cambios':'Guardar asiento';$('aCancel').style.display=m?'':'none';$('aRep').disabled=!!m;if(m)$('aRep').checked=false;
   const n=$('aEditNota');n.style.display=m?'':'none';n.textContent=m?(String(m.id).startsWith('R:')?`Estás corrigiendo a mano un asiento automático (${m.fecha} «${m.glosa}»). Cambia las cuentas o montos y toca "Guardar cambios". El documento y el F29 no cambian.`:`Estás modificando el asiento del ${m.fecha} «${m.glosa}». Cambia lo que necesites y toca "Guardar cambios".`):''}
-function cargarPlantilla(){const t=PLANT[$('aPla').value];ML=t.l.map(([sp])=>({c:sp?buscar(sp):'',d:0,h:0}));if(t.g&&!$('aGlo').value)$('aGlo').value=t.g;renderLin()}
+function cargarPlantilla(){const k=$('aPla').value,t=PLANT[k];ML=t.l.map(([sp])=>({c:sp?buscar(sp):'',d:0,h:0}));if(t.g&&!$('aGlo').value)$('aGlo').value=t.g;
+  if(k==='f29'){let cf=rc('f29');if(!cf){let c='2010601';while(S.plan.some(x=>x.c===c))c=String(+c+1);S.plan.push({c,n:'Impuestos por pagar F29'});S.plan.sort((a,b)=>a.c<b.c?-1:1);S.rmap=S.rmap||{};S.rmap.f29=c;cf=c;save()}ML[0].c=cf;const fe=$('aFec').value||new Date().toISOString().slice(0,10);let[y,m]=fe.split('-').map(Number);m--;if(m<1){m=12;y--}const ym=`${y}-${String(m).padStart(2,'0')}`;let tot=0;try{const F=cadenaF29()[ym];if(F)tot=asientoIVA(ym,F).filter(l=>l.c===cf).reduce((a,l)=>a+l.h-l.d,0)}catch(e){}
+    if(tot>0){ML[0].d=tot;ML[1].h=tot}$('aGlo').value=`Pago F29 período ${String(m).padStart(2,'0')}/${y}`;const n=$('msgA');n.className='msg';n.textContent=tot>0?`Monto del F29 de ${MESES[m-1]} ${y}: ${fmt(tot)}. Revisa la cuenta del banco y la fecha real del pago.`:`No encontré monto a pagar en el F29 de ${MESES[m-1]} ${y}. Escribe el monto pagado.`}
+  renderLin()}
 function totA(){const D=ML.reduce((s,l)=>s+(+l.d||0),0),H=ML.reduce((s,l)=>s+(+l.h||0),0);$('aTD').textContent=fmt(D);$('aTH').textContent=fmt(H);const df=Math.round(D-H);$('aDif').textContent=df?`Diferencia ${fmt(Math.abs(df))} al ${df>0?'Haber':'Debe'}`:'Totales cuadrados';$('aDif').style.color=df?'var(--acc)':'';return{D,H,df}}
 function renderLin(){$('aLin').innerHTML=ML.map((l,i)=>`<tr><td style="min-width:120px"><input list="dlPlan" data-al="${i}" data-f="c" value="${esc(l.c)}"></td><td class="note">${esc(l.c?nom(l.c):'')}</td><td style="min-width:110px"><input inputmode="numeric" data-al="${i}" data-f="d" value="${l.d||''}" style="text-align:right"></td><td style="min-width:110px"><input inputmode="numeric" data-al="${i}" data-f="h" value="${l.h||''}" style="text-align:right"></td><td><button class="btn alt" data-ax="${i}" type="button" style="min-height:34px;padding:3px 10px">×</button></td></tr>`).join('');$('dlPlan').innerHTML=S.plan.map(p=>`<option value="${esc(p.c)}">${esc(p.n)}</option>`).join('');totA()}
 $('aLin').addEventListener('input',e=>{const i=e.target.dataset.al;if(i===undefined)return;const f=e.target.dataset.f;ML[i][f]=f==='c'?e.target.value.trim():num(e.target.value);if(f==='c')e.target.closest('tr').children[1].textContent=nom(ML[i].c);totA()});
 $('aLin').addEventListener('click',e=>{const b=e.target.closest('[data-ax]');if(!b)return;ML.splice(+b.dataset.ax,1);renderLin()});
 $('aAdd').addEventListener('click',()=>{ML.push({c:'',d:0,h:0});renderLin()});
 $('aPla').addEventListener('change',()=>{$('aGlo').value='';cargarPlantilla()});
+$('aFec').addEventListener('change',()=>{if($('aPla').value==='f29'&&!aEdit)cargarPlantilla()});
 $('aBusB').addEventListener('click',traerAsiento);$('aBusN').addEventListener('keydown',e=>{if(e.key==='Enter')traerAsiento()});
 $('aSave').addEventListener('click',()=>{const msg=$('msgA');msg.className='msg err';const f=$('aFec').value,g=$('aGlo').value.trim(),lin=ML.filter(l=>l.c&&(l.d||l.h));const{D,df}=totA();
   if(!f){msg.textContent='Falta la fecha.';return}if(!g){msg.textContent='Falta la glosa.';return}if(lin.length<2){msg.textContent='El asiento necesita al menos dos líneas con cuenta y monto.';return}
@@ -1166,7 +1171,7 @@ $('aSave').addEventListener('click',()=>{const msg=$('msgA');msg.className='msg 
     x.fecha=f;x.glosa=g;x.lineas=lin.map(l=>({c:l.c,d:+l.d||0,h:+l.h||0}));x.mod=new Date().toISOString();modoEdicion(null);msg.className='msg';msg.textContent=`Cambios guardados: ${g}, por ${fmt(D)}.`;aviso('Asiento modificado. Los libros, balances y declaraciones se recalcularon.',true);S.emp.per=f.slice(0,4);$('aGlo').value='';cargarPlantilla();save();render();return}
   const [y,m,d]=f.split('-').map(Number),hasta=$('aRep').checked?12:m;S.manual=S.manual||[];
   for(let mm=m;mm<=hasta;mm++){const dd=Math.min(d,new Date(y,mm,0).getDate());S.manual.push({id:Date.now()+'-'+mm,fecha:`${y}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`,glosa:g+(hasta>m?` ${String(mm).padStart(2,'0')}/${y}`:''),lineas:lin.map(l=>({c:l.c,d:+l.d||0,h:+l.h||0}))})}
-  msg.className='msg';msg.textContent=`Guardado${hasta>m?` (${hasta-m+1} meses)`:''}: ${g}, por ${fmt(D)}.`;aviso(fueraDeAnio(f)?`Asiento guardado en el año ${y}, distinto del año que estabas viendo.`:'Asiento guardado.',true);S.emp.per=String(y);$('aGlo').value='';$('aRep').checked=false;cargarPlantilla();save();render()});
+  msg.className='msg';msg.textContent=`Guardado${hasta>m?` (${hasta-m+1} meses)`:''}: ${g}, por ${fmt(D)}.`;aviso(fueraDeAnio(f)?`Asiento guardado en el año ${y}, distinto del año que estabas viendo.`:'Asiento guardado.',true);S.emp.per=String(y);$('aGlo').value='';$('aRep').checked=false;if($('aPla').value==='f29')$('aPla').value='libre';cargarPlantilla();save();render()});
 /* ---------- contabilidad centralizada acumulada ---------- */
 let CEN=null;
 const MESN={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12};
