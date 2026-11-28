@@ -97,7 +97,7 @@ td input{min-height:36px;padding:5px 8px;margin:0;font-size:15px}
 </head>
 <body>
 <header class="band"><div class="wrap">
-  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 21:40</p>
+  <h1>Contabilidad SII</h1><p class="note" id="verApp" style="margin:2px 0 0">Versión 27-11-2026 · 23:45</p>
   <p class="sub">Del Registro de Compras y Ventas al libro diario, mayor y balance de comprobación.</p>
   <div id="avisoApp"></div>
   <div class="emp" id="empLine"></div>
@@ -1832,7 +1832,7 @@ function depAF(a,y,tipo){y=+y;const V=+a.valor,y0=+a.fecha.slice(0,4),yIni=a.y1?
     d=Math.max(0,Math.min(Math.round(d),vla-1));usados+=m;if(yy===y)res={ini:acc,dep:d,fin:acc+d,neto:vla-d,vli,cm,vla,cmAc:cmAc+cm,baja:!!(a.baja&&a.baja.slice(0,4)===String(y))};acc+=d;cmAc+=cm;vl=vla-d}
   return res}
 function afAsientos(y){const out=[],tipo=S.afLibro||'trib',gas=buscar('3020801|depreciaci[oó]n del ejercicio'),per=buscar('3020701|costo vta activo fijo|p[eé]rdida.*activo');
-  (S.af||[]).forEach(a=>{if(a.fecha.slice(0,4)===y&&a.compra&&a.cta&&a.cta!==S.map.activoFijo)out.push({k:'X',fecha:a.fecha,glosa:`Reclasificación activo fijo: ${a.nom}`,lineas:[{c:a.cta,d:+a.valor,h:0},{c:S.map.activoFijo,d:0,h:+a.valor}]})});
+  (S.af||[]).forEach(a=>{if(a.fecha.slice(0,4)===y&&a.compra&&a.cta&&String(a.cta).trim()!==String(S.map.activoFijo).trim())out.push({k:'X',fecha:a.fecha,glosa:`Reclasificación activo fijo: ${a.nom}`,lineas:[{c:a.cta,d:+a.valor,h:0},{c:S.map.activoFijo,d:0,h:+a.valor}]})});
   const G={};(S.af||[]).forEach(a=>{const d=depAF(a,y,tipo);if(d.dep){const c=ctaDep(a.gru);G[c]=(G[c]||0)+d.dep}
     if(d.baja){const vt=+a.valor+(tipo==='trib'?d.cmAc:0);const lin=[{c:ctaDep(a.gru),d:d.fin,h:0},{c:per,d:vt-d.fin,h:0},{c:a.cta,d:0,h:vt}].filter(l=>Math.round(l.d)||Math.round(l.h));out.push({k:'X',fecha:a.baja,glosa:`Baja de activo fijo: ${a.nom}`,lineas:lin,orden:1})}});
   const tot=Object.values(G).reduce((s,v)=>s+v,0);if(tot){out.push({k:'X',fecha:`${y}-12-31`,glosa:`Depreciación del ejercicio ${y} (${tipo==='trib'?'tributaria':'financiera'})`,lineas:[{c:gas,d:tot,h:0},...Object.entries(G).map(([c,v])=>({c,d:0,h:v}))]})}
