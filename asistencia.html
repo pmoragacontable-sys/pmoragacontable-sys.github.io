@@ -45,7 +45,7 @@ const SUPA={url:'https://rtvedgrgqoamrmvqwayh.supabase.co',key:'sb_publishable_A
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const TZ='America/Santiago',TIP={entrada:'Entrada',sal_col:'Salida a colación',ent_col:'Vuelta de colación',salida:'Salida'},ORD=['entrada','sal_col','ent_col','salida'];
 const dia=d=>new Date(d).toLocaleDateString('en-CA',{timeZone:TZ}),hm=d=>new Date(d).toLocaleTimeString('es-CL',{timeZone:TZ,hour:'2-digit',minute:'2-digit'}),fdm=f=>String(f).split('-').reverse().join('-');
-const P=new URLSearchParams(location.search),EMP=(P.get('e')||'').toUpperCase(),OWN=P.get('o')||'',NOM=P.get('n')||'';
+const P=new URLSearchParams(location.search),EMP=(P.get('e')||'').toUpperCase(),OWN=P.get('o')||'',NOM=P.get('n')||'';const KIO=P.get('k')==='1';
 function tr(m){m=String(m||'');let x;if(x=m.match(/after (\d+) seconds?/i))return`Por seguridad, espera ${x[1]} segundos antes de intentarlo de nuevo.`;const T=[[/invalid login credentials/i,'Correo o clave incorrectos.'],[/email not confirmed/i,'Primero confirma tu correo con el enlace que te llegó (revisa también Spam) y vuelve a esta página.'],[/already (registered|been registered)|user already exists/i,'Ese correo ya tiene cuenta: usa «Entrar».'],[/password should be at least/i,'La clave es muy corta.'],[/no está habilitado|row-level security/i,'Tu correo no está habilitado para marcar en esta empresa. Pide a la contadora que te agregue.'],[/failed to fetch|network/i,'Sin conexión a internet.']];for(const[r,t]of T)if(r.test(m))return t;return'Ocurrió un problema: '+m}
 let SB,U,M=[],T=null;
 if(!EMP||!OWN){document.querySelector('main').innerHTML='<div class="panel"><h2>Enlace incompleto</h2><p>Este enlace no indica la empresa. Pide a tu empleador el enlace de asistencia.</p></div>';return}
@@ -53,8 +53,8 @@ $('emp').textContent=(NOM?NOM+' · ':'')+'Marca tu entrada y salida';
 const lmsg=(t,b)=>{$('lgMsg').textContent=t;$('lgMsg').className='note'+(b?' err':'')};
 const mmsg=(t,c)=>{$('mMsg').textContent=t;$('mMsg').className='msg '+(c||'')};
 setInterval(()=>{const d=new Date();$('reloj').textContent=d.toLocaleTimeString('es-CL',{timeZone:TZ,hour:'2-digit',minute:'2-digit'});$('fecha').textContent=d.toLocaleDateString('es-CL',{timeZone:TZ,weekday:'long',day:'numeric',month:'long',year:'numeric'})},1000);
-async function entrar(u){U=u;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('sMail').textContent=u.email;
-  const{data,error}=await SB.from('asist_trab').select('*').eq('owner',OWN).eq('empresa',EMP).ilike('correo',u.email);
+async function entrar(u){U=u;if(KIO)return kiosco(u);$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('sMail').textContent=u.email;
+  const{data,error}=await SB.from('asist_trab').select('owner,empresa,correo,nombre,rut,activo').eq('owner',OWN).eq('empresa',EMP).ilike('correo',u.email);
   T=(data||[]).find(x=>x.activo)||null;$('tNom').textContent=T?(T.nombre||''):'';
   if(error||!T){$('pMarcar').innerHTML='<h2>Sin habilitación</h2><p class="err">Tu correo ('+esc(u.email)+') no está habilitado para marcar en esta empresa. Pide a la contadora que te agregue y vuelve a entrar.</p>';}
   await cargar()}
@@ -65,6 +65,28 @@ function pintar(){const hoy=dia(new Date()),H=M.filter(m=>dia(m.hora)===hoy),ult
   $('tHoy').innerHTML='<tr><th>Hora</th><th>Marca</th><th>Lugar</th></tr>'+(H.map(m=>`<tr><td>${hm(m.hora)}</td><td>${TIP[m.tipo]}</td><td>${lug(m)}</td></tr>`).join('')||'<tr><td colspan="3" class="note">Aún no marcas hoy.</td></tr>');
   const D={};M.forEach(m=>{const k=dia(m.hora);(D[k]=D[k]||{})[m.tipo]=D[k][m.tipo]||hm(m.hora);if(m.tipo==='salida')D[k].salida=hm(m.hora)});
   $('tMes').innerHTML='<tr><th>Día</th><th>Entrada</th><th>Sal. colación</th><th>Vuelta</th><th>Salida</th></tr>'+(Object.keys(D).sort().reverse().map(k=>`<tr><td>${fdm(k)}</td>${ORD.map(t=>`<td>${D[k][t]||'—'}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="5" class="note">Sin marcas este mes.</td></tr>')}
+let KPOS=null,KTMR=null,KCAM=null;
+function kPos(){if(!navigator.geolocation)return;navigator.geolocation.getCurrentPosition(p=>{KPOS=p.coords},()=>{},{enableHighAccuracy:true,timeout:20000,maximumAge:300000})}
+async function kiosco(u){$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('sMail').textContent='Tablet: '+u.email;$('tNom').textContent=NOM||'';
+  const{data,error}=await SB.from('asist_kiosco').select('empresa').eq('owner',OWN).eq('empresa',EMP).ilike('correo',u.email);
+  document.querySelectorAll('#vApp>.panel:not(:first-child)').forEach(x=>x.remove());
+  const pn=document.createElement('div');pn.className='panel';$('vApp').appendChild(pn);
+  if(error||!data||!data.length){pn.innerHTML='<h2>Tablet no autorizada</h2><p class="err">Esta cuenta ('+esc(u.email)+') no está autorizada como tablet de esta empresa. La contadora debe agregarla en «Control de asistencia → Tablet en la entrada».</p>';return}
+  pn.innerHTML=`<h2>Registrar asistencia</h2><div class="grid"><label>RUT<input id="kRut" placeholder="12.345.678-9" autocomplete="off"></label><label>PIN<input id="kPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off"></label></div>
+    <div class="big" style="margin-top:12px"><button class="btn" data-k="entrada" type="button">Entrada</button><button class="btn" data-k="sal_col" type="button">Salida a colación</button><button class="btn" data-k="ent_col" type="button">Vuelta de colación</button><button class="btn" data-k="salida" type="button">Salida</button></div>
+    <div class="row" style="margin-top:12px;gap:12px;align-items:flex-start"><video id="kVid" autoplay playsinline muted style="width:200px;max-width:45%;border-radius:12px;background:#000;transform:scaleX(-1)"></video><div style="flex:1"><div id="kRes" style="font-size:20px;font-weight:700;min-height:1.5em"></div><p class="note">Escribe tu RUT y tu PIN, mira a la cámara y aprieta la marca. Se guarda una foto en ese momento, junto con la hora que pone el sistema.</p></div></div>`;
+  try{KCAM=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640}},audio:false});$('kVid').srcObject=KCAM}catch(_){KCAM=null;$('kRes').className='err';$('kRes').textContent='No se pudo usar la cámara. Permite el acceso a la cámara en el navegador y recarga la página.'}
+  kPos();setInterval(kPos,300000);try{navigator.wakeLock&&navigator.wakeLock.request('screen')}catch(_){}
+  $('kRut').focus()}
+document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-k]');if(!b)return;const t=b.dataset.k,rut=$('kRut').value.trim(),pin=$('kPin').value.trim(),R=$('kRes');clearTimeout(KTMR);
+  if(!rut||!pin){R.className='err';R.textContent='Escribe tu RUT y tu PIN.';return}const foto=await kFoto();if(!foto){R.className='err';R.textContent='La cámara no está lista. Permite el acceso a la cámara y recarga la página.';return}
+  document.querySelectorAll('[data-k]').forEach(x=>x.disabled=true);R.className='';R.textContent='Registrando…';
+  try{const{data,error}=await SB.rpc('asist_kiosco_marcar',{p_owner:OWN,p_empresa:EMP,p_rut:rut,p_pin:pin,p_tipo:t,p_lat:KPOS?KPOS.latitude:null,p_lng:KPOS?KPOS.longitude:null});if(error)throw error;
+    if(!data||!data.ok){R.className='err';R.textContent=(data&&data.msg)||'No se pudo registrar.';$('kPin').value='';return}
+    const up=await SB.storage.from('asistencia-fotos').upload(`${OWN}/${EMP}/${data.id}.jpg`,foto,{contentType:'image/jpeg',upsert:false});R.className='ok';R.textContent=`✔ ${data.nombre||''} · ${TIP[data.tipo]} a las ${hm(data.hora)}`+(up.error?' (no se pudo guardar la foto)':'');$('kRut').value='';$('kPin').value=''}
+  catch(er){R.className='err';R.textContent=tr(er.message||er)}
+  finally{document.querySelectorAll('[data-k]').forEach(x=>x.disabled=false);KTMR=setTimeout(()=>{R.textContent='';$('kRut').focus()},6000)}});
+function kFoto(){const v=$('kVid');if(!KCAM||!v||!v.videoWidth)return null;const w=480,h=Math.round(v.videoHeight*w/v.videoWidth),c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(v,0,0,w,h);return new Promise(ok=>c.toBlob(ok,'image/jpeg',0.7))}
 function ubicar(){return new Promise((ok,ko)=>{if(!navigator.geolocation)return ko(new Error('Este teléfono no permite obtener la ubicación.'));navigator.geolocation.getCurrentPosition(ok,e=>ko(new Error(e.code===1?'Debes permitir el acceso a la ubicación para marcar (revisa los permisos del navegador).':'No se pudo obtener la ubicación. Sal a un lugar con mejor señal e inténtalo de nuevo.')),{enableHighAccuracy:true,timeout:20000,maximumAge:0})})}
 document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-t]');if(!b||!T)return;const t=b.dataset.t;
   if(!confirm(`¿Marcar «${TIP[t]}» ahora?`))return;document.querySelectorAll('[data-t]').forEach(x=>x.disabled=true);mmsg('Obteniendo tu ubicación…');
