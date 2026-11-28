@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de asistencia</title>
+<style>
+:root{--bg:#f6f5f1;--pan:#fff;--ink:#1d2421;--mut:#5f6b66;--lin:#dcdcd4;--acc:#b8361e;--ok:#2f7d4f;--chip:#efeee8}
+@media (prefers-color-scheme:dark){:root{--bg:#161a18;--pan:#1f2422;--ink:#ecefe9;--mut:#a3ada7;--lin:#36403b;--acc:#e0603f;--ok:#5fbf86;--chip:#2a312e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:18px 16px 40px}h1{font-size:23px;margin:0}h2{font-size:17px;margin:0 0 10px}.sub{color:var(--mut);margin:2px 0 14px}
+.panel{background:var(--pan);border:1px solid var(--lin);border-radius:14px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut);font-weight:600}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--lin);border-radius:8px;padding:9px 10px;min-height:40px}
+.btn{border:1px solid var(--ink);background:transparent;color:var(--ink);padding:9px 14px;border-radius:9px;cursor:pointer;font-weight:600;min-height:40px}.btn.acc{background:var(--acc);border-color:var(--acc);color:#fff}.btn.sm{padding:3px 9px;min-height:0;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.note{color:var(--mut);font-size:13px}.msg{min-height:1.2em;margin:8px 0 0}.err{color:var(--acc)}.ok{color:var(--ok)}.hide{display:none!important}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.kpi{background:var(--chip);border-radius:12px;padding:12px}.kpi span{display:block;color:var(--mut);font-size:12px;font-weight:600}.kpi strong{font-size:20px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 8px;border-bottom:1px solid var(--lin);text-align:left;vertical-align:top}th{color:var(--mut);font-size:12px}td.n,th.n{text-align:right;white-space:nowrap}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:10px}.big .btn{min-height:74px;font-size:17px}.big .btn.sug{background:var(--acc);border-color:var(--acc);color:#fff}
+.reloj{font-size:40px;font-weight:700;letter-spacing:1px}.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}.chip.ok{background:#2f7d4f22;color:var(--ok)}.chip.no{background:#b8361e22;color:var(--acc)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Control de asistencia</h1><p class="sub" id="emp">Marca tu entrada y salida</p>
+  <div id="vLogin" class="panel">
+    <h2>Ingreso</h2><p class="note" id="lgMsg">Entra con tu correo y clave. Si es tu primera vez, escribe tu correo, inventa una clave de al menos 8 caracteres y aprieta «Crear cuenta».</p>
+    <div class="grid"><label>Correo<input id="lgMail" type="email" autocomplete="username"></label><label>Clave<input id="lgPass" type="password" autocomplete="current-password"></label></div>
+    <div class="row" style="margin-top:12px"><button class="btn acc" id="lgIn" type="button">Entrar</button><button class="btn" id="lgUp" type="button">Crear cuenta</button></div>
+  </div>
+  <div id="vApp" class="hide">
+    <div class="panel"><div class="row" style="justify-content:space-between"><div><div class="reloj" id="reloj">--:--</div><div class="note" id="fecha"></div></div><div style="text-align:right"><b id="tNom"></b><br><span class="note" id="sMail"></span><br><button class="btn sm" id="bSalir" type="button" style="margin-top:6px">🔒 Cerrar sesión</button></div></div></div>
+    <div class="panel" id="pMarcar"><h2>Marcar</h2>
+      <div class="big"><button class="btn" data-t="entrada" type="button">Entrada</button><button class="btn" data-t="sal_col" type="button">Salida a colación</button><button class="btn" data-t="ent_col" type="button">Vuelta de colación</button><button class="btn" data-t="salida" type="button">Salida</button></div>
+      <p class="msg" id="mMsg"></p>
+      <p class="note">Al marcar, el celular pide tu ubicación <b>solo en ese momento</b> y la hora la pone el sistema (no el teléfono). Las marcas no se pueden borrar ni cambiar.</p></div>
+    <div class="panel"><h2>Mis marcas de hoy</h2><div style="overflow-x:auto"><table id="tHoy"></table></div></div>
+    <div class="panel"><h2>Este mes</h2><div style="overflow-x:auto"><table id="tMes"></table></div></div>
+  </div>
+</main>
+<script>
+(()=>{'use strict';
+const SUPA={url:'https://rtvedgrgqoamrmvqwayh.supabase.co',key:'sb_publishable_ArR2hcpJtuLqBZFt2wfqTQ_-TwvnM8b'};
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TZ='America/Santiago',TIP={entrada:'Entrada',sal_col:'Salida a colación',ent_col:'Vuelta de colación',salida:'Salida'},ORD=['entrada','sal_col','ent_col','salida'];
+const dia=d=>new Date(d).toLocaleDateString('en-CA',{timeZone:TZ}),hm=d=>new Date(d).toLocaleTimeString('es-CL',{timeZone:TZ,hour:'2-digit',minute:'2-digit'}),fdm=f=>String(f).split('-').reverse().join('-');
+const P=new URLSearchParams(location.search),EMP=(P.get('e')||'').toUpperCase(),OWN=P.get('o')||'',NOM=P.get('n')||'';
+function tr(m){m=String(m||'');let x;if(x=m.match(/after (\d+) seconds?/i))return`Por seguridad, espera ${x[1]} segundos antes de intentarlo de nuevo.`;const T=[[/invalid login credentials/i,'Correo o clave incorrectos.'],[/email not confirmed/i,'Primero confirma tu correo con el enlace que te llegó (revisa también Spam) y vuelve a esta página.'],[/already (registered|been registered)|user already exists/i,'Ese correo ya tiene cuenta: usa «Entrar».'],[/password should be at least/i,'La clave es muy corta.'],[/no está habilitado|row-level security/i,'Tu correo no está habilitado para marcar en esta empresa. Pide a la contadora que te agregue.'],[/failed to fetch|network/i,'Sin conexión a internet.']];for(const[r,t]of T)if(r.test(m))return t;return'Ocurrió un problema: '+m}
+let SB,U,M=[],T=null;
+if(!EMP||!OWN){document.querySelector('main').innerHTML='<div class="panel"><h2>Enlace incompleto</h2><p>Este enlace no indica la empresa. Pide a tu empleador el enlace de asistencia.</p></div>';return}
+$('emp').textContent=(NOM?NOM+' · ':'')+'Marca tu entrada y salida';
+const lmsg=(t,b)=>{$('lgMsg').textContent=t;$('lgMsg').className='note'+(b?' err':'')};
+const mmsg=(t,c)=>{$('mMsg').textContent=t;$('mMsg').className='msg '+(c||'')};
+setInterval(()=>{const d=new Date();$('reloj').textContent=d.toLocaleTimeString('es-CL',{timeZone:TZ,hour:'2-digit',minute:'2-digit'});$('fecha').textContent=d.toLocaleDateString('es-CL',{timeZone:TZ,weekday:'long',day:'numeric',month:'long',year:'numeric'})},1000);
+async function entrar(u){U=u;$('vLogin').classList.add('hide');$('vApp').classList.remove('hide');$('sMail').textContent=u.email;
+  const{data,error}=await SB.from('asist_trab').select('*').eq('owner',OWN).eq('empresa',EMP).ilike('correo',u.email);
+  T=(data||[]).find(x=>x.activo)||null;$('tNom').textContent=T?(T.nombre||''):'';
+  if(error||!T){$('pMarcar').innerHTML='<h2>Sin habilitación</h2><p class="err">Tu correo ('+esc(u.email)+') no está habilitado para marcar en esta empresa. Pide a la contadora que te agregue y vuelve a entrar.</p>';}
+  await cargar()}
+async function cargar(){const ini=new Date();ini.setDate(1);ini.setHours(0,0,0,0);const{data}=await SB.from('asistencia').select('*').eq('owner',OWN).eq('empresa',EMP).eq('trab_uid',U.id).gte('hora',new Date(ini.getTime()-864e5).toISOString()).order('hora');M=data||[];pintar()}
+function pintar(){const hoy=dia(new Date()),H=M.filter(m=>dia(m.hora)===hoy),ult=H.length?H[H.length-1].tipo:null,sig=ult?ORD[Math.min(3,ORD.indexOf(ult)+1)]:'entrada';
+  document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('sug',b.dataset.t===sig&&ult!=='salida'));
+  const lug=m=>m.dentro===true?'<span class="chip ok">En el lugar</span>':m.dentro===false?`<span class="chip no">Fuera (${m.distancia_m} m)</span>`:'';
+  $('tHoy').innerHTML='<tr><th>Hora</th><th>Marca</th><th>Lugar</th></tr>'+(H.map(m=>`<tr><td>${hm(m.hora)}</td><td>${TIP[m.tipo]}</td><td>${lug(m)}</td></tr>`).join('')||'<tr><td colspan="3" class="note">Aún no marcas hoy.</td></tr>');
+  const D={};M.forEach(m=>{const k=dia(m.hora);(D[k]=D[k]||{})[m.tipo]=D[k][m.tipo]||hm(m.hora);if(m.tipo==='salida')D[k].salida=hm(m.hora)});
+  $('tMes').innerHTML='<tr><th>Día</th><th>Entrada</th><th>Sal. colación</th><th>Vuelta</th><th>Salida</th></tr>'+(Object.keys(D).sort().reverse().map(k=>`<tr><td>${fdm(k)}</td>${ORD.map(t=>`<td>${D[k][t]||'—'}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="5" class="note">Sin marcas este mes.</td></tr>')}
+function ubicar(){return new Promise((ok,ko)=>{if(!navigator.geolocation)return ko(new Error('Este teléfono no permite obtener la ubicación.'));navigator.geolocation.getCurrentPosition(ok,e=>ko(new Error(e.code===1?'Debes permitir el acceso a la ubicación para marcar (revisa los permisos del navegador).':'No se pudo obtener la ubicación. Sal a un lugar con mejor señal e inténtalo de nuevo.')),{enableHighAccuracy:true,timeout:20000,maximumAge:0})})}
+document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-t]');if(!b||!T)return;const t=b.dataset.t;
+  if(!confirm(`¿Marcar «${TIP[t]}» ahora?`))return;document.querySelectorAll('[data-t]').forEach(x=>x.disabled=true);mmsg('Obteniendo tu ubicación…');
+  try{const p=await ubicar();mmsg('Guardando…');const{data,error}=await SB.from('asistencia').insert({owner:OWN,empresa:EMP,tipo:t,lat:p.coords.latitude,lng:p.coords.longitude,precision_m:Math.round(p.coords.accuracy),nombre:T.nombre||'',rut:T.rut||''}).select().single();
+    if(error)throw error;mmsg(`✔ ${TIP[t]} marcada a las ${hm(data.hora)}`+(data.dentro===false?` — ojo: quedó FUERA del lugar de trabajo (${data.distancia_m} m).`:''),data.dentro===false?'err':'ok');await cargar()}
+  catch(er){mmsg(tr(er.message||er),'err')}finally{document.querySelectorAll('[data-t]').forEach(x=>x.disabled=false)}});
+(async()=>{try{await new Promise((ok,ko)=>{const t=document.createElement('script');t.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';t.onload=ok;t.onerror=ko;document.head.appendChild(t)});SB=window.supabase.createClient(SUPA.url,SUPA.key);
+  const{data}=await SB.auth.getSession();if(data&&data.session)entrar(data.session.user)}catch(e){lmsg('No se pudo conectar. Revisa tu internet y recarga la página.',true)}})();
+$('lgIn').onclick=async()=>{const m=$('lgMail').value.trim(),p=$('lgPass').value;if(!m||!p)return lmsg('Escribe tu correo y tu clave.',true);lmsg('Entrando…');const{data,error}=await SB.auth.signInWithPassword({email:m,password:p});if(error)return lmsg(tr(error.message),true);entrar(data.user)};
+$('lgUp').onclick=async()=>{const m=$('lgMail').value.trim(),p=$('lgPass').value;if(!m||p.length<8)return lmsg('Escribe tu correo y una clave de al menos 8 caracteres.',true);const{data,error}=await SB.auth.signUp({email:m,password:p});if(error)return lmsg('No se pudo crear la cuenta. '+tr(error.message),true);if(data&&data.session)return entrar(data.user);lmsg('Cuenta creada. Revisa tu correo y aprieta el enlace de confirmación; después vuelve a ESTE enlace y aprieta «Entrar».')};
+$('bSalir').onclick=async()=>{await SB.auth.signOut();location.reload()};
+})();
+</script>
+</body>
+</html>
